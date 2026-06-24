@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { bookmarksApi } from "@/lib/api";
-import type { Novel } from "@/types/api";
 import NovelCard from "@/components/novel/NovelCard";
 import { useRouter } from "next/navigation";
 import styles from "./page.module.css";
@@ -11,14 +10,14 @@ import styles from "./page.module.css";
 export default function BookmarksPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [bookmarks, setBookmarks] = useState<Novel[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [bookmarks, setBookmarks] = useState<any[]>([]);
+  const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
     if (!authLoading && !user) { router.push("/auth/login"); return; }
     if (user) {
       bookmarksApi.list()
-        .then(setBookmarks)
+        .then((data: any) => setBookmarks(Array.isArray(data) ? data : data.bookmarks || []))
         .finally(() => setLoading(false));
     }
   }, [user, authLoading]);

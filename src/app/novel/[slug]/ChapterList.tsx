@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { chaptersApi } from "@/lib/api";
-import type { ChapterMeta } from "@/types/api";
 import styles from "./ChapterList.module.css";
 
 interface Props {
@@ -12,7 +11,7 @@ interface Props {
 }
 
 export default function ChapterList({ novelSlug, totalChapters }: Props) {
-  const [chapters, setChapters] = useState<ChapterMeta[]>([]);
+  const [chapters, setChapters] = useState<any[]>([]);
   const [loading, setLoading]   = useState(true);
 
   useEffect(() => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import NovelCard from "@/components/novel/NovelCard";
@@ -16,7 +17,8 @@ const SORTS = [
   { label: "Recently updated",  value: "new"    },
 ];
 
-export default function BrowsePage() {
+// ── Inner component uses useSearchParams — must be wrapped in Suspense ────────
+function BrowseContent() {
   const searchParams = useSearchParams();
 
   const [novels,  setNovels]  = useState<Novel[]>([]);
@@ -168,5 +170,14 @@ export default function BrowsePage() {
         <div className={`ad-slot ${styles.adBottom}`}>— advertisement —</div>
       </div>
     </div>
+  );
+}
+
+// ── Outer wrapper provides the required Suspense boundary ─────────────────────
+export default function BrowsePage() {
+  return (
+    <Suspense fallback={<div style={{ padding: "2rem" }}>Loading…</div>}>
+      <BrowseContent />
+    </Suspense>
   );
 }
