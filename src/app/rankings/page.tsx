@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import type { Novel } from "@/types/api";
 import styles from "./page.module.css";
 
 const API  = process.env.NEXT_PUBLIC_API_URL  || "http://localhost:4000/api";
@@ -13,19 +14,19 @@ const TABS = [
   { label: "Recently updated", sort: "new"    },
 ];
 
-async function fetchRanking(sort: string, limit = 20): Promise<any[]> {
+async function fetchRanking(sort: string, limit = 20): Promise<Novel[]> {
   try {
     const res = await fetch(`${API}/novels?site=${SITE}&sort=${sort}&limit=${limit}`, {
       cache: "no-store",
     });
-    const data = await res.json();
-    return data.novels || [];
+    const data = await res.json() as { novels?: Novel[] };
+    return data.novels ?? [];
   } catch { return []; }
 }
 
 export default function RankingsPage() {
   const [activeTab, setActiveTab] = useState(0);
-  const [novels,    setNovels]    = useState<any[]>([]);
+  const [novels,    setNovels]    = useState<Novel[]>([]);
   const [loading,   setLoading]   = useState(true);
 
   useEffect(() => {

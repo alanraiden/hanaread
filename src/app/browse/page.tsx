@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import NovelCard from "@/components/novel/NovelCard";
 import { novelsApi } from "@/lib/api";
+import type { Novel } from "@/types/api";
 import styles from "./page.module.css";
 
 const GENRES   = ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Harem", "Historical", "Horror", "Isekai", "Josei", "Martial Arts", "Mecha", "Mystery", "Psychological", "Romance", "School Life", "Sci-Fi", "Slice of Life", "Sports", "Supernatural", "System", "Tragedy", "Wuxia", "Xianxia", "Xuanhuan"];
@@ -18,7 +19,7 @@ const SORTS = [
 export default function BrowsePage() {
   const searchParams = useSearchParams();
 
-  const [novels,  setNovels]  = useState<any[]>([]);
+  const [novels,  setNovels]  = useState<Novel[]>([]);
   const [total,   setTotal]   = useState(0);
   const [loading, setLoading] = useState(true);
   const [page,    setPage]    = useState(1);
@@ -33,12 +34,17 @@ export default function BrowsePage() {
   const loadNovels = useCallback(async () => {
     setLoading(true);
     try {
-      const params: any = { sort, page, limit };
+      const params: Record<string, string> = {
+        sort,
+        page:  String(page),
+        limit: String(limit),
+      };
       if (status) params.status = status;
       if (genre)  params.genre  = genre;
+
       const data = await novelsApi.list(params);
-      setNovels(data.novels || []);
-      setTotal(data.total   || 0);
+      setNovels(data.novels);
+      setTotal(data.total);
     } catch {
       setNovels([]);
     } finally {
