@@ -3,34 +3,29 @@ import Link from "next/link";
 import NovelCard from "@/components/novel/NovelCard";
 import styles from "./page.module.css";
 
+// Force dynamic rendering — prevents build-time fetch failures on Vercel
+export const dynamic = "force-dynamic";
+
 const API  = process.env.NEXT_PUBLIC_API_URL  || "http://localhost:4000/api";
 const SITE = process.env.NEXT_PUBLIC_SITE_ID  || "site1";
 
 async function getTrending() {
   try {
-    const url = `${API}/novels/trending?site=${SITE}&limit=12`;
-    console.log("[getTrending] fetching:", url);
-    const res = await fetch(url, { cache: "no-store" });
-    console.log("[getTrending] status:", res.status);
+    const res = await fetch(`${API}/novels/trending?site=${SITE}&limit=12`, {
+      next: { revalidate: 300 }, // ISR — rebuild every 5 min
+    });
     return res.ok ? res.json() : [];
-  } catch (e) {
-    console.error("[getTrending] error:", e);
-    return [];
-  }
+  } catch { return []; }
 }
 
 async function getNewlyUpdated() {
   try {
-    const url = `${API}/novels?site=${SITE}&sort=new&limit=6`;
-    console.log("[getNewlyUpdated] fetching:", url);
-    const res = await fetch(url, { cache: "no-store" });
-    console.log("[getNewlyUpdated] status:", res.status);
+    const res = await fetch(`${API}/novels?site=${SITE}&sort=new&limit=6`, {
+      next: { revalidate: 300 },
+    });
     const data = await res.json();
     return data.novels || [];
-  } catch (e) {
-    console.error("[getNewlyUpdated] error:", e);
-    return [];
-  }
+  } catch { return []; }
 }
 
 export const metadata: Metadata = {
@@ -59,14 +54,13 @@ export default async function HomePage() {
       </section>
 
       <div className="container">
-        {/* Top ad slot */}
         <div className={`ad-slot ${styles.adTop}`}>— advertisement —</div>
 
         {/* Trending */}
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>Trending this week</h2>
-            <Link href="/browse?sort=popular" className={styles.seeAll}>See all →</Link>
+            <Link href="/browse?sort=views" className={styles.seeAll}>See all →</Link>
           </div>
           {trending.length > 0 ? (
             <div className={styles.grid}>
@@ -77,7 +71,6 @@ export default async function HomePage() {
           )}
         </section>
 
-        {/* Mid ad slot */}
         <div className={`ad-slot ${styles.adMid}`}>— advertisement —</div>
 
         {/* Recently updated */}
