@@ -1,47 +1,39 @@
-import { Metadata } from "next";
+"use client";
+
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import styles from "./page.module.css";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
-const SITE = process.env.NEXT_PUBLIC_SITE_ID || "site1";
+const API  = process.env.NEXT_PUBLIC_API_URL  || "http://localhost:4000/api";
+const SITE = process.env.NEXT_PUBLIC_SITE_ID  || "site1";
 
-export const metadata: Metadata = { title: "Rankings" };
+const TABS = [
+  { label: "Top rated",        sort: "rating" },
+  { label: "Most read",        sort: "views"  },
+  { label: "Recently updated", sort: "new"    },
+];
 
-async function fetchRanking(sort: string, limit = 20) {
+async function fetchRanking(sort: string, limit = 20): Promise<any[]> {
   try {
     const res = await fetch(`${API}/novels?site=${SITE}&sort=${sort}&limit=${limit}`, {
-      next: { revalidate: 3600 },
+      cache: "no-store",
     });
     const data = await res.json();
     return data.novels || [];
   } catch { return []; }
 }
 
-export default async function RankingsPage() {
-  const [byRating, byViews, byUpdated] = await Promise.all([
-    fetchRanking("rating", 10),
-    fetchRanking("popular", 10),
-    fetchRanking("updated", 10),
-  ]);
+export default function RankingsPage() {
+  const [activeTab, setActiveTab] = useState(0);
+  const [novels,    setNovels]    = useState<any[]>([]);
+  const [loading,   setLoading]   = useState(true);
 
-  const RankList = ({ novels }: { novels: any[] }) => (
-    <div className={styles.rankList}>
-      {novels.length === 0 && <p className={styles.empty}>No data yet.</p>}
-      {novels.map((n, i) => (
-        <Link key={n.id} href={`/novel/${n.slug}`} className={styles.rankItem}>
-          <span className={`${styles.rankNum} ${i < 3 ? styles.top3 : ""}`}>{i + 1}</span>
-          <div className={styles.rankCover} />
-          <div className={styles.rankInfo}>
-            <div className={styles.rankTitle}>{n.title}</div>
-            <div className={styles.rankMeta}>
-              ★ {Number(n.avg_rating).toFixed(1)} · {n.status}
-            </div>
-          </div>
-          <span className={styles.rankViews}>{(n.view_count / 1000).toFixed(0)}k</span>
-        </Link>
-      ))}
-    </div>
-  );
+  useEffect(() => {
+    setLoading(true);
+    fetchRanking(TABS[activeTab].sort, 20)
+      .then(setNovels)
+      .finally(() => setLoading(false));
+  }, [activeTab]);
 
   return (
     <div className={styles.page}>
@@ -50,20 +42,58 @@ export default async function RankingsPage() {
 
         <div className={`ad-slot ${styles.adTop}`}>— advertisement —</div>
 
-        <div className={styles.cols}>
-          <section>
-            <h2 className={styles.sectionTitle}>Top rated</h2>
-            <RankList novels={byRating} />
-          </section>
-          <section>
-            <h2 className={styles.sectionTitle}>Most read</h2>
-            <RankList novels={byViews} />
-          </section>
-          <section>
-            <h2 className={styles.sectionTitle}>Recently updated</h2>
-            <RankList novels={byUpdated} />
-          </section>
+        {/* Tab bar */}
+        <div className={styles.tabs}>
+          {TABS.map((tab, i) => (
+            <button
+              key={tab.sort}
+              className={`${styles.tab} ${i === activeTab ? styles.tabActive : ""}`}
+              onClick={() => setActiveTab(i)}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
+
+        {/* Rank list */}
+        {loading ? (
+          <div className={styles.rankList}>
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className={styles.skeleton} />
+            ))}
+          </div>
+        ) : novels.length === 0 ? (
+          <p className={styles.empty}>No data yet.</p>
+        ) : (
+          <div className={styles.rankList}>
+            {novels.map((n, i) => (
+              <Link key={n._id} href={`/novel/${n.slug}`} className={styles.rankItem}>
+                <span className={`${styles.rankNum} ${i < 3 ? styles.top3 : ""}`}>
+                  {i + 1}
+                </span>
+                <div
+                  className={styles.rankCover}
+                  style={n.cover ? {
+                    backgroundImage: `url(${n.cover})`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                  } : {}}
+                />
+                <div className={styles.rankInfo}>
+                  <div className={styles.rankTitle}>{n.title}</div>
+                  <div className={styles.rankMeta}>
+                    ★ {Number(n.rating).toFixed(1)} · {n.status}
+                  </div>
+                </div>
+                <span className={styles.rankViews}>
+                  {n.views >= 1000
+                    ? `${(n.views / 1000).toFixed(1)}k`
+                    : n.views}
+                </span>
+              </Link>
+            ))}
+          </div>
+        )}
 
         <div className={`ad-slot ${styles.adBottom}`}>— advertisement —</div>
       </div>

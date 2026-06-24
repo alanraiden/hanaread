@@ -7,31 +7,66 @@ import styles from "./page.module.css";
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 
 async function getChapter(slug: string, num: string) {
-  const res = await fetch(`${API}/chapters/${slug}/${num}`, { next: { revalidate: 3600 } });
+  const res = await fetch(`${API}/chapters/${slug}/${num}`, { cache: "no-store" });
   if (res.status === 404) return null;
   return res.json();
 }
 
-export async function generateMetadata({ params }: { params: { slug: string; num: string } }): Promise<Metadata> {
-  const ch = await getChapter(params.slug, params.num);
-  if (!ch) return { title: "Chapter not found" };
+async function getNovel(slug: string) {
+  const res = await fetch(`${API}/novels/${slug}`, { cache: "no-store" });
+  if (!res.ok) return null;
+  return res.json();
+}
+
+// Check if an adjacent chapter exists
+async function chapterExists(slug: string, num: number) {
+  if (num < 1) return false;
+  const res = await fetch(`${API}/chapters/${slug}/${num}`, { cache: "no-store" });
+  return res.ok;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: { slug: string; num: string };
+}): Promise<Metadata> {
+  const [chapter, novel] = await Promise.all([
+    getChapter(params.slug, params.num),
+    getNovel(params.slug),
+  ]);
+  if (!chapter) return { title: "Chapter not found" };
   return {
-    title: `Chapter ${ch.chapter_num}${ch.title ? ` — ${ch.title}` : ""} | ${ch.novel_title}`,
+    title: `Chapter ${chapter.number}${chapter.title ? ` — ${chapter.title}` : ""} | ${novel?.title ?? ""}`,
   };
 }
 
-export default async function ChapterPage({ params }: { params: { slug: string; num: string } }) {
-  const chapter = await getChapter(params.slug, params.num);
+export default async function ChapterPage({
+  params,
+}: {
+  params: { slug: string; num: string };
+}) {
+  const currentNum = Number(params.num);
+
+  const [chapter, novel, hasPrev, hasNext] = await Promise.all([
+    getChapter(params.slug, params.num),
+    getNovel(params.slug),
+    chapterExists(params.slug, currentNum - 1),
+    chapterExists(params.slug, currentNum + 1),
+  ]);
+
   if (!chapter) notFound();
+
+  const novelTitle = novel?.title ?? "";
+  const novelSlug  = params.slug;
 
   return (
     <div className={styles.page}>
       {/* Sticky reader topbar */}
       <div className={styles.topbar}>
-        <Link href={`/novel/${chapter.novel_slug}`} className={styles.novelLink}>
-          ← {chapter.novel_title}
+        <Link href={`/novel/${novelSlug}`} className={styles.novelLink}>
+          ← {novelTitle}
         </Link>
-        <span className={styles.chapterLabel}>Chapter {chapter.chapter_num}</span>
+        <span className={styles.chapterLabel}>Chapter {chapter.number}</span>
       </div>
 
       <div className={styles.wrap}>
@@ -40,21 +75,25 @@ export default async function ChapterPage({ params }: { params: { slug: string; 
 
         {/* Chapter header */}
         <div className={styles.header}>
-          <p className={styles.novelSm}>{chapter.novel_title}</p>
+          <p className={styles.novelSm}>{novelTitle}</p>
           <h1 className={styles.title}>
-            Chapter {chapter.chapter_num}
+            Chapter {chapter.number}
             {chapter.title ? ` — ${chapter.title}` : ""}
           </h1>
           <div className={styles.meta}>
-            <span>{chapter.word_count?.toLocaleString()} words</span>
+            <span>{chapter.wordCount?.toLocaleString()} words</span>
             <span className={styles.dot} />
-            <span>~{Math.ceil((chapter.word_count || 1500) / 250)} min read</span>
+            <span>~{Math.ceil((chapter.wordCount || 1500) / 250)} min read</span>
             <span className={styles.dot} />
-            <span>{new Date(chapter.published_at).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</span>
+            <span>
+              {new Date(chapter.createdAt).toLocaleDateString("en-US", {
+                year: "numeric", month: "long", day: "numeric",
+              })}
+            </span>
           </div>
         </div>
 
-        {/* Font / size controls — client component */}
+        {/* Font / size controls */}
         <ReaderControls />
 
         {/* Chapter body */}
@@ -69,19 +108,21 @@ export default async function ChapterPage({ params }: { params: { slug: string; 
 
         {/* Prev / Next nav */}
         <div className={styles.chNav}>
-          {chapter.prev_chapter ? (
-            <Link href={`/novel/${chapter.novel_slug}/chapter/${chapter.prev_chapter.chapter_num}`} className={styles.navBtn}>
-              ← Ch. {chapter.prev_chapter.chapter_num}
+          {hasPrev ? (
+            <Link href={`/novel/${novelSlug}/chapter/${currentNum - 1}`} className={styles.navBtn}>
+              ← Ch. {currentNum - 1}
             </Link>
           ) : <span />}
 
-          <Link href={`/novel/${chapter.novel_slug}`} className={styles.navIndex}>Chapter list</Link>
+          <Link href={`/novel/${novelSlug}`} className={styles.navIndex}>Chapter list</Link>
 
-          {chapter.next_chapter ? (
-            <Link href={`/novel/${chapter.novel_slug}/chapter/${chapter.next_chapter.chapter_num}`} className={styles.navBtnPrimary}>
-              Ch. {chapter.next_chapter.chapter_num} →
+          {hasNext ? (
+            <Link href={`/novel/${novelSlug}/chapter/${currentNum + 1}`} className={styles.navBtnPrimary}>
+              Ch. {currentNum + 1} →
             </Link>
-          ) : <span className={styles.noMore}>No more chapters yet</span>}
+          ) : (
+            <span className={styles.noMore}>No more chapters yet</span>
+          )}
         </div>
 
         {/* Bottom ad */}
