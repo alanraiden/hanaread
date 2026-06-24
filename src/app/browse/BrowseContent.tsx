@@ -42,7 +42,7 @@ export default function BrowseContent() {
       if (status) params.status = status;
       if (genre)  params.genre  = genre;
 
-      const data = await novelsApi.list(params);
+      const data = await novelsApi.list(params) as any;
       setNovels(data.novels);
       setTotal(data.total);
     } catch {
