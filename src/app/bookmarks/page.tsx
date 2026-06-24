@@ -11,13 +11,13 @@ export default function BookmarksPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [bookmarks, setBookmarks] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
     if (!authLoading && !user) { router.push("/auth/login"); return; }
     if (user) {
       bookmarksApi.list()
-        .then(setBookmarks)
+        .then((data: any) => setBookmarks(Array.isArray(data) ? data : data.bookmarks || []))
         .finally(() => setLoading(false));
     }
   }, [user, authLoading]);
@@ -38,16 +38,8 @@ export default function BookmarksPage() {
         ) : (
           <div className={styles.grid}>
             {bookmarks.map(b => (
-              <div key={b.id} className={styles.bookmarkCard}>
+              <div key={b._id} className={styles.bookmarkCard}>
                 <NovelCard novel={b} />
-                {b.last_chapter && (
-                  <a
-                    href={`/novel/${b.slug}/chapter/${b.last_chapter}`}
-                    className={styles.continueBtn}
-                  >
-                    Continue ch. {b.last_chapter}
-                  </a>
-                )}
               </div>
             ))}
           </div>
