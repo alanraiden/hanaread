@@ -2,8 +2,7 @@ const BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 const SITE = process.env.NEXT_PUBLIC_SITE_ID || "site1";
 
 // ── Core fetch wrapper ────────────────────────────────────────────────────────
-async function apiFetch(path: string, options: RequestInit = {}): Promise<unknown> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("hr_token") : null;
+async function apiFetch(path: string, options: RequestInit = {}): Promise<unknown> {  const token = typeof window !== "undefined" ? localStorage.getItem("hr_token") : null;
 
   const res = await fetch(`${BASE}${path}`, {
     ...options,
