@@ -229,16 +229,17 @@
   transition: border-color 0.15s, background 0.15s;
   text-decoration: none;
 }
-.listItem:hover { border-color: #ccc; background: var(--bg-surface); }
+.listItem:hover { border-color: var(--pink); background: var(--bg-surface); }
 
-/* FIX: use <img> wrapper so covers actually render */
+/* Cover wrapper — slightly taller for more visual presence */
 .listCoverWrap {
-  width: 52px;
-  height: 78px;
-  border-radius: 4px;
+  width: 62px;
+  height: 92px;
+  border-radius: 6px;
   flex-shrink: 0;
   overflow: hidden;
   background: var(--bg-surface);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 .listCoverImg {
@@ -248,18 +249,115 @@
   display: block;
 }
 
+/* Fallback cover with first letter of title */
 .listCoverFallback {
   width: 100%;
   height: 100%;
   background: linear-gradient(160deg, #F4C0D1, #993556);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.listCoverFallbackText {
+  font-size: 24px;
+  font-weight: 700;
+  color: white;
+  opacity: 0.9;
 }
 
 .listInfo { flex: 1; min-width: 0; }
-.listTitle { font-size: 15px; font-weight: 500; color: var(--text-primary); margin-bottom: 4px; }
-.listMeta { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
-.listRating { color: var(--pink); }
+
+/* Title row: title + status badge side by side */
+.listTitleRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.listTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Status badge — pill style matching the screenshot filter UI */
+.statusBadge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 20px;
+  border: 1px solid;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+.statusOngoing {
+  color: #22c55e;
+  border-color: #22c55e;
+  background: rgba(34, 197, 94, 0.08);
+}
+.statusCompleted {
+  color: #3b82f6;
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.listMeta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 7px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.listRating { color: var(--pink); font-weight: 500; }
+.listChapters { color: var(--text-secondary); }
+
+/* Genre pills row */
+.listGenres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 7px;
+}
+
+.genrePill {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 0.5px solid var(--border);
+  letter-spacing: 0.1px;
+}
+
+.genrePillMore {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: var(--pink-light);
+  color: var(--pink);
+  border: 0.5px solid var(--pink);
+}
+
 .listDesc {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-secondary);
   line-height: 1.5;
   display: -webkit-box;

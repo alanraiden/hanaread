@@ -231,7 +231,7 @@ export default function BrowseContent() {
               <div className={styles.listView}>
                 {novels.map(n => (
                   <a key={n._id} href={`/novel/${n.slug}`} className={styles.listItem}>
-                    {/* ── Cover: use <img> not backgroundImage to avoid silent failures ── */}
+                    {/* ── Cover ── */}
                     <div className={styles.listCoverWrap}>
                       {n.cover ? (
                         <img
@@ -241,15 +241,44 @@ export default function BrowseContent() {
                           loading="lazy"
                         />
                       ) : (
-                        <div className={styles.listCoverFallback} />
+                        <div className={styles.listCoverFallback}>
+                          <span className={styles.listCoverFallbackText}>
+                            {n.title.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
                       )}
                     </div>
+
                     <div className={styles.listInfo}>
-                      <div className={styles.listTitle}>{n.title}</div>
+                      {/* Title + status badge inline */}
+                      <div className={styles.listTitleRow}>
+                        <div className={styles.listTitle}>{n.title}</div>
+                        <span className={`${styles.statusBadge} ${n.status === "completed" ? styles.statusCompleted : styles.statusOngoing}`}>
+                          {n.status === "completed" ? "✓ Completed" : "● Ongoing"}
+                        </span>
+                      </div>
+
+                      {/* Rating row */}
                       <div className={styles.listMeta}>
                         <span className={styles.listRating}>★ {Number(n.rating).toFixed(1)}</span>
-                        <span> · {n.status}</span>
+                        {n.chapterCount > 0 && (
+                          <span className={styles.listChapters}> · {n.chapterCount} ch</span>
+                        )}
                       </div>
+
+                      {/* Genre pills */}
+                      {n.genres && n.genres.length > 0 && (
+                        <div className={styles.listGenres}>
+                          {n.genres.slice(0, 4).map(g => (
+                            <span key={g} className={styles.genrePill}>{g}</span>
+                          ))}
+                          {n.genres.length > 4 && (
+                            <span className={styles.genrePillMore}>+{n.genres.length - 4}</span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Description */}
                       {n.description && (
                         <p className={styles.listDesc}>{n.description}</p>
                       )}
