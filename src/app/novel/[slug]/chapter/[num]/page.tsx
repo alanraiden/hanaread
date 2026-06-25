@@ -8,10 +8,6 @@ const API  = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 const SITE = process.env.NEXT_PUBLIC_SITE_ID || "site1";
 
 // ─── Static generation ────────────────────────────────────────────────────────
-// Fetches every novel's chapter count at build time and returns params for
-// every chapter page. Newly published chapters (added after the build) are
-// still served on-demand via ISR because dynamicParams defaults to true.
-
 export async function generateStaticParams(): Promise<
   { slug: string; num: string }[]
 > {
@@ -19,7 +15,6 @@ export async function generateStaticParams(): Promise<
   let page    = 1;
   let hasMore = true;
 
-  // Step 1 — collect all novels (paginated)
   const novels: Array<{ slug: string; chapterCount: number }> = [];
 
   while (hasMore) {
@@ -42,9 +37,6 @@ export async function generateStaticParams(): Promise<
     }
   }
 
-  // Step 2 — expand each novel into one param object per chapter
-  // We already have chapterCount from the list response, so no extra API call
-  // is needed per novel.
   for (const novel of novels) {
     const count = novel.chapterCount ?? 0;
     for (let i = 1; i <= count; i++) {
@@ -73,11 +65,46 @@ async function chapterExists(slug: string, num: number) {
   return res.ok;
 }
 
-// ─── SEO FIX: Helper — truncate without cutting words ────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function truncate(str: string, maxLen: number): string {
   if (!str || str.length <= maxLen) return str ?? "";
   return str.slice(0, str.lastIndexOf(" ", maxLen)) + "…";
 }
+
+/**
+ * FIX 1 — Returns true only when chapter.title is a real descriptive title,
+ * not the generic "Chapter N" / "Chapter N. Some Title" pattern that many
+ * scrapers store as the title.  Those generic labels caused the H1 and
+ * <title> to read "…Chapter 12 — Chapter 12".
+ */
+function isRealTitle(title: string | undefined | null): boolean {
+  if (!title || !title.trim()) return false;
+  // Matches: "Chapter 12", "Chapter 12.", "chapter 12 — foo", "Ch. 12" etc.
+  return !/^ch(apter)?\.?\s*\d+/i.test(title.trim());
+}
+
+/**
+ * FIX 2 — Extracts the first real prose paragraph from chapter content.
+ * Skips short header lines, "Chapter N" labels, and abbreviation headers
+ * like "HHLWMBW — Chapter 12" that scrapers prepend to the content.
+ */
+function firstProseParagraph(content: string | undefined | null): string | null {
+  if (!content) return null;
+  return (
+    content
+      .split(/\n+/)
+      .map((p) => p.trim())
+      .find(
+        (p) =>
+          p.length > 80 &&
+          !/^ch(apter)?\.?\s*\d+/i.test(p) &&   // skip "Chapter 12" lines
+          !/^[A-Z]{3,10}\s*[—-]/.test(p)         // skip "HHLWMBW —" abbreviations
+      ) ?? null
+  );
+}
+
+// ─── Metadata ─────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({
   params,
@@ -92,34 +119,56 @@ export async function generateMetadata({
 
   const novelTitle = novel?.title ?? "";
 
-  // SEO FIX: Title pattern "Novel Name Ch.N — Chapter Title"
-  // Keep the novel name short so the full title stays under 60 chars.
-  // E.g. "My Secret Husband Ch.12 — The Meeting" (38 chars) ✓
-  const shortNovelTitle = truncate(novelTitle, 30);
-  const chapterPart = chapter.title
-    ? `Ch.${chapter.number} — ${truncate(chapter.title, 20)}`
+  // FIX 2 — Build chapter label; only append chapter.title when it's a real
+  // descriptive title, not a generic "Chapter N" repeat.
+  const realTitle = isRealTitle(chapter.title);
+  const chapterLabel = realTitle
+    ? `Chapter ${chapter.number} — ${chapter.title}`
     : `Chapter ${chapter.number}`;
-  const seoTitle = `${shortNovelTitle} ${chapterPart}`;
 
-  // SEO FIX: Unique description per chapter.
-  // Uses the first sentence of the chapter content as a teaser (~155 chars).
-  const firstSentence = chapter.content
-    ? truncate(chapter.content.replace(/\n+/g, " ").trim(), 130)
-    : null;
-  const seoDescription = firstSentence
-    ? `${firstSentence} — Read ${novelTitle} Chapter ${chapter.number} on HanaReads.`
+  // FIX 2 — Keep full novel title; only truncate if the combined string
+  // exceeds the 65-char SERP budget.
+  const fullSeoTitle = `${novelTitle} ${chapterLabel} | HanaReads`;
+  const seoTitle =
+    fullSeoTitle.length <= 65
+      ? fullSeoTitle
+      : `${truncate(novelTitle, 65 - chapterLabel.length - 12)} ${chapterLabel} | HanaReads`;
+
+  // FIX 3 — Pull description from the first real prose paragraph, not the
+  // raw content start which may contain junk header lines.
+  const teaser = firstProseParagraph(chapter.content);
+  const seoDescription = teaser
+    ? `${truncate(teaser, 120)} — Read ${novelTitle} Chapter ${chapter.number} on HanaReads.`
     : `Read ${novelTitle} Chapter ${chapter.number} on HanaReads. Free English translation.`;
+
+  const canonicalUrl = `https://hanareads.fun/novel/${params.slug}/chapter/${params.num}`;
 
   return {
     title: seoTitle,
     description: truncate(seoDescription, 155),
 
-    // SEO FIX: Canonical URL for each chapter page
     alternates: {
-      canonical: `/novel/${params.slug}/chapter/${params.num}`,
+      canonical: canonicalUrl,
+    },
+
+    // FIX 4 — Add per-chapter OG + Twitter tags so shared links show the
+    // chapter title instead of the generic "HanaReads" homepage fallback.
+    openGraph: {
+      title: seoTitle,
+      description: truncate(seoDescription, 155),
+      url: canonicalUrl,
+      type: "article",
+      siteName: "HanaReads",
+    },
+    twitter: {
+      card: "summary",
+      title: seoTitle,
+      description: truncate(seoDescription, 155),
     },
   };
 }
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function ChapterPage({
   params,
@@ -140,6 +189,10 @@ export default async function ChapterPage({
   const novelTitle = novel?.title ?? "";
   const novelSlug  = params.slug;
 
+  // FIX 1 — Only show chapter.title in the H1 when it's a real descriptive
+  // title; prevents "Novel Name — Chapter 12 — Chapter 12" duplication.
+  const realTitle = isRealTitle(chapter.title);
+
   return (
     <div className={styles.page}>
       {/* Sticky reader topbar */}
@@ -158,14 +211,11 @@ export default async function ChapterPage({
         <div className={styles.header}>
           <p className={styles.novelSm}>{novelTitle}</p>
 
-          {/*
-            SEO FIX: Include the NOVEL TITLE in the H1 so every chapter page
-            has a UNIQUE H1. Previously "Chapter 1" was duplicated across all
-            novels. Now it reads "My Secret Husband — Chapter 1 — The Meeting".
-          */}
+          {/* FIX 1 — H1 no longer duplicates "Chapter N" when chapter.title
+              is just a generic "Chapter N" label from the scraper. */}
           <h1 className={styles.title}>
             {novelTitle} — Chapter {chapter.number}
-            {chapter.title ? ` — ${chapter.title}` : ""}
+            {realTitle ? ` — ${chapter.title}` : ""}
           </h1>
 
           <div className={styles.meta}>
@@ -194,7 +244,6 @@ export default async function ChapterPage({
         {/* Mid ad */}
         <div className={`ad-slot ${styles.adMid}`}>— advertisement —</div>
 
-        {/* SEO FIX: Add h2 for the navigation section */}
         <h2 className="sr-only">Chapter Navigation</h2>
 
         {/* Prev / Next nav */}
