@@ -22,9 +22,7 @@ export const metadata: Metadata = {
   },
   description: SITE_DESC,
 
-  // SEO FIX: Default canonical for the root — individual pages override this
-  alternates: {
-    canonical: "/",
+
   },
 
   openGraph: {
