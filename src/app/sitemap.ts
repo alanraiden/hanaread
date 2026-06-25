@@ -2,7 +2,7 @@ import { MetadataRoute } from "next";
 
 const API      = process.env.NEXT_PUBLIC_API_URL  || "http://localhost:4000/api";
 const SITE     = process.env.NEXT_PUBLIC_SITE_ID  || "site1";
-const BASE_URL = (process.env.NEXT_PUBLIC_BASE_URL || "https://hanareads.com").replace(/\/$/, "");
+const BASE_URL = (process.env.NEXT_PUBLIC_BASE_URL || "https://hanareads.fun").replace(/\/$/, "");
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
