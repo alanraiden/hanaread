@@ -104,6 +104,51 @@ function firstProseParagraph(content: string | undefined | null): string | null 
   );
 }
 
+/**
+ * FIX 5 — Splits chapter content into paragraphs regardless of whether the
+ * scraper stored them with double newlines (\n\n) or single newlines (\n).
+ *
+ * Root cause: different source sites / scrapers normalise line breaks
+ * differently.  Novels from some sources land in the DB with \n\n between
+ * paragraphs (current split works fine); others use a single \n so the old
+ * split('\n\n') returned one giant string and everything collapsed into one
+ * <p> block.
+ *
+ * Strategy:
+ *   - If the content already has \n\n, trust those as paragraph boundaries.
+ *   - Otherwise fall back to \n as the separator.
+ * This avoids over-splitting well-formatted content while fixing the
+ * single-newline novels.
+ */
+/**
+ * FIX 5 — Converts raw chapter content into safe HTML paragraphs.
+ * Mirrors idenwebstudio's formatContent exactly.
+ *
+ * Root cause: HTML silently collapses \n whitespace, so dialogue lines
+ * separated by a single \n all merged into one unbroken wall of text.
+ * idenwebstudio avoids this by converting inner \n to <br/> after splitting
+ * on \n\n — HanaReads was only splitting, not handling inner newlines.
+ *
+ * Strategy:
+ *   1. Split on \n\n+ (or \n if no double newlines) to get paragraphs.
+ *   2. Within each paragraph replace remaining \n with <br/> so dialogue
+ *      lines on single newlines still render on separate lines.
+ *   3. Return as HTML string for dangerouslySetInnerHTML.
+ *
+ * Content is from our own DB (no user input) so dangerouslySetInnerHTML
+ * is safe — same pattern idenwebstudio already uses.
+ */
+function formatContent(content: string): string {
+  if (!content) return "";
+  const separator = content.includes("\n\n") ? /\n\n+/ : /\n/;
+  return content
+    .split(separator)
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => `<p>${p.replace(/\n/g, "<br/>")}</p>`)
+    .join("");
+}
+
 // ─── Metadata ─────────────────────────────────────────────────────────────────
 
 export async function generateMetadata({
@@ -234,12 +279,15 @@ export default async function ChapterPage({
         {/* Font / size controls */}
         <ReaderControls />
 
-        {/* Chapter body */}
-        <div className={styles.body} id="chapter-body">
-          {chapter.content.split("\n\n").filter(Boolean).map((para: string, i: number) => (
-            <p key={i}>{para}</p>
-          ))}
-        </div>
+        {/* Chapter body — dangerouslySetInnerHTML is safe here because
+            content comes from our own DB, not user input. This mirrors
+            idenwebstudio's approach and is required so inner \n renders
+            as <br/> instead of being collapsed by HTML whitespace rules. */}
+        <div
+          className={styles.body}
+          id="chapter-body"
+          dangerouslySetInnerHTML={{ __html: formatContent(chapter.content) }}
+        />
 
         {/* Mid ad */}
         <div className={`ad-slot ${styles.adMid}`}>— advertisement —</div>
