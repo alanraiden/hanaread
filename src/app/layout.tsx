@@ -5,26 +5,15 @@ import "./globals.css";
 
 const SITE_NAME = process.env.NEXT_PUBLIC_SITE_NAME || "HanaReads";
 const SITE_DESC = process.env.NEXT_PUBLIC_SITE_DESCRIPTION || "Read Korean romance novels in English — fresh translations, weekly updates.";
-
-// ─── SEO FIX: Add NEXT_PUBLIC_SITE_URL to your .env file ─────────────────────
-// Example: NEXT_PUBLIC_SITE_URL=https://www.hanaread.com
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://hanareads.fun";
 
 export const metadata: Metadata = {
-  // SEO FIX: metadataBase makes all relative canonical/og URLs absolute.
-  // This is required for canonical tags to work correctly in Next.js.
   metadataBase: new URL(SITE_URL),
-
   title: {
     default: SITE_NAME,
-    // Every page should set its own `title` — this template appends "| HanaReads"
     template: `%s | ${SITE_NAME}`,
   },
   description: SITE_DESC,
-
-
-  },
-
   openGraph: {
     type: "website",
     siteName: SITE_NAME,
