@@ -4,7 +4,56 @@ import Link from "next/link";
 import ReaderControls from "./ReaderControls";
 import styles from "./page.module.css";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+const API  = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+const SITE = process.env.NEXT_PUBLIC_SITE_ID || "site1";
+
+// ─── Static generation ────────────────────────────────────────────────────────
+// Fetches every novel's chapter count at build time and returns params for
+// every chapter page. Newly published chapters (added after the build) are
+// still served on-demand via ISR because dynamicParams defaults to true.
+
+export async function generateStaticParams(): Promise<
+  { slug: string; num: string }[]
+> {
+  const allParams: { slug: string; num: string }[] = [];
+  let page    = 1;
+  let hasMore = true;
+
+  // Step 1 — collect all novels (paginated)
+  const novels: Array<{ slug: string; chapterCount: number }> = [];
+
+  while (hasMore) {
+    try {
+      const res = await fetch(
+        `${API}/novels?site=${SITE}&sort=new&limit=100&page=${page}`,
+        { cache: "no-store" }
+      );
+      if (!res.ok) break;
+
+      const data = await res.json();
+      const batch: Array<{ slug: string; chapterCount: number }> =
+        data.novels ?? [];
+
+      novels.push(...batch);
+      hasMore = page < (data.pages ?? 1) && batch.length > 0;
+      page++;
+    } catch {
+      break;
+    }
+  }
+
+  // Step 2 — expand each novel into one param object per chapter
+  // We already have chapterCount from the list response, so no extra API call
+  // is needed per novel.
+  for (const novel of novels) {
+    const count = novel.chapterCount ?? 0;
+    for (let i = 1; i <= count; i++) {
+      allParams.push({ slug: novel.slug, num: String(i) });
+    }
+  }
+
+  return allParams;
+}
 
 async function getChapter(slug: string, num: string) {
   const res = await fetch(`${API}/chapters/${slug}/${num}`, { cache: "no-store" });

@@ -6,7 +6,41 @@ import ChapterList from "./ChapterList";
 import BookmarkBtn from "./BookmarkBtn";
 import styles from "./page.module.css";
 
-const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+const API  = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+const SITE = process.env.NEXT_PUBLIC_SITE_ID || "site1";
+
+// ─── Static generation ────────────────────────────────────────────────────────
+// At build time Next.js calls this function, pre-renders a page for every slug
+// it returns, and stores the HTML. New slugs added after the build are still
+// handled on-demand (dynamicParams defaults to true) and cached via ISR.
+
+export async function generateStaticParams(): Promise<{ slug: string }[]> {
+  const slugs: { slug: string }[] = [];
+  let page    = 1;
+  let hasMore = true;
+
+  while (hasMore) {
+    try {
+      const res = await fetch(
+        `${API}/novels?site=${SITE}&sort=new&limit=100&page=${page}`,
+        { cache: "no-store" }
+      );
+      if (!res.ok) break;
+
+      const data = await res.json();
+      const batch: Array<{ slug: string }> = data.novels ?? [];
+
+      slugs.push(...batch.map((n) => ({ slug: n.slug })));
+
+      hasMore = page < (data.pages ?? 1) && batch.length > 0;
+      page++;
+    } catch {
+      break; // Network error during build — skip remaining pages gracefully
+    }
+  }
+
+  return slugs;
+}
 
 async function getNovel(slug: string) {
   const res = await fetch(`${API}/novels/${slug}`, { next: { revalidate: 600 } });
