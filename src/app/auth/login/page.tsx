@@ -2,7 +2,7 @@
 // src/app/auth/login/page.tsx — add this near the top
 import { Metadata } from "next";
 export const metadata: Metadata = {
-  title: "Login",
+  title: "Login to Your HanaReads Account",
   description: "Sign in to your HanaReads account.",
   alternates: { canonical: "/auth/login" },
 };
