@@ -17,7 +17,6 @@ const SORTS = [
   { label: "Recently updated",  value: "new"    },
 ];
 
-// ── Inner component uses useSearchParams — must be wrapped in Suspense ────────
 function BrowseContent() {
   const searchParams = useSearchParams();
 
@@ -136,13 +135,54 @@ function BrowseContent() {
               <div className={styles.listView}>
                 {novels.map(n => (
                   <a key={n._id} href={`/novel/${n.slug}`} className={styles.listItem}>
-                    <div className={styles.listCover} style={{ background: "linear-gradient(160deg, #F4C0D1, #993556)" }} />
+                    {/* Cover */}
+                    <div className={styles.listCoverWrap}>
+                      {n.cover ? (
+                        <img
+                          src={n.cover}
+                          alt={n.title}
+                          className={styles.listCoverImg}
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className={styles.listCoverFallback}>
+                          <span className={styles.listCoverFallbackText}>
+                            {n.title.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
                     <div className={styles.listInfo}>
-                      <div className={styles.listTitle}>{n.title}</div>
+                      {/* Title + status badge */}
+                      <div className={styles.listTitleRow}>
+                        <div className={styles.listTitle}>{n.title}</div>
+                        <span className={`${styles.statusBadge} ${n.status === "completed" ? styles.statusCompleted : styles.statusOngoing}`}>
+                          {n.status === "completed" ? "✓ Completed" : "● Ongoing"}
+                        </span>
+                      </div>
+
+                      {/* Rating */}
                       <div className={styles.listMeta}>
                         <span className={styles.listRating}>★ {Number(n.rating).toFixed(1)}</span>
-                        <span> · {n.status}</span>
+                        {n.chapterCount > 0 && (
+                          <span className={styles.listChapters}> · {n.chapterCount} ch</span>
+                        )}
                       </div>
+
+                      {/* Genre pills */}
+                      {n.genres && n.genres.length > 0 && (
+                        <div className={styles.listGenres}>
+                          {n.genres.slice(0, 4).map(g => (
+                            <span key={g} className={styles.genrePill}>{g}</span>
+                          ))}
+                          {n.genres.length > 4 && (
+                            <span className={styles.genrePillMore}>+{n.genres.length - 4}</span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Description */}
                       {n.description && <p className={styles.listDesc}>{n.description}</p>}
                     </div>
                   </a>
@@ -173,7 +213,6 @@ function BrowseContent() {
   );
 }
 
-// ── Outer wrapper provides the required Suspense boundary ─────────────────────
 export default function BrowsePage() {
   return (
     <Suspense fallback={<div style={{ padding: "2rem" }}>Loading…</div>}>
