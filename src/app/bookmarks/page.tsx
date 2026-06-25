@@ -2,7 +2,7 @@
 // src/app/bookmarks/page.tsx — add this near the top of the file
 import { Metadata } from "next";
 export const metadata: Metadata = {
-  title: "My Bookmarks",
+  title: "My Bookmarked Novels",
   description: "Your saved novels on HanaReads.",
   alternates: { canonical: "/bookmarks" },
 };
