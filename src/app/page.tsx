@@ -29,7 +29,7 @@ async function getNewlyUpdated() {
 
 // ─── SEO FIX: Unique title + description + canonical for the home page ────────
 export const metadata: Metadata = {
-  title: "Home",
+  title: "Read Korean Romance Novels Free",
   description:
     "Discover the best Korean romance novels in English. Read trending titles, explore new translations, and follow your favorite stories — updated weekly.",
   alternates: {
