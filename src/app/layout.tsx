@@ -8,7 +8,7 @@ const SITE_DESC = process.env.NEXT_PUBLIC_SITE_DESCRIPTION || "Read Korean roman
 
 // ─── SEO FIX: Add NEXT_PUBLIC_SITE_URL to your .env file ─────────────────────
 // Example: NEXT_PUBLIC_SITE_URL=https://www.hanaread.com
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://www.hanaread.com";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://hanareads.fun";
 
 export const metadata: Metadata = {
   // SEO FIX: metadataBase makes all relative canonical/og URLs absolute.
