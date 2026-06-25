@@ -5,9 +5,9 @@ import { authApi } from "@/lib/api";
 
 interface User {
   id: string;
-  username: string;
+  name: string;        // was: username
   email: string;
-  avatar_url: string | null;
+  avatar: string;      // was: avatar_url
   role: string;
 }
 
@@ -15,7 +15,7 @@ interface AuthCtx {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -40,8 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(user);
   };
 
-  const register = async (username: string, email: string, password: string) => {
-    const { token, user } = await authApi.register({ username, email, password });
+  const register = async (name: string, email: string, password: string) => {
+    const { token, user } = await authApi.register({ name, email, password }); // was: { username, ... }
     localStorage.setItem("hr_token", token);
     setUser(user);
   };

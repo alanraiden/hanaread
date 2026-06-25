@@ -1,5 +1,5 @@
 "use client";
-// src/app/auth/signup/page.tsx — add this near the top
+// src/app/auth/signup/page.tsx
 import { useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
@@ -9,7 +9,7 @@ import styles from "../auth.module.css";
 export default function SignupPage() {
   const { register } = useAuth();
   const router = useRouter();
-  const [username, setUsername] = useState("");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -20,7 +20,7 @@ export default function SignupPage() {
     if (password.length < 8) { setError("Password must be at least 8 characters"); return; }
     setError(""); setLoading(true);
     try {
-      await register(username, email, password);
+      await register(name, email, password);
       router.push("/");
     } catch (err: any) {
       setError(err.message || "Sign up failed");
@@ -39,8 +39,8 @@ export default function SignupPage() {
           <label className={styles.label}>Username</label>
           <input
             className={styles.input}
-            type="text" value={username} required
-            onChange={e => setUsername(e.target.value)}
+            type="text" value={name} required
+            onChange={e => setName(e.target.value)}
             placeholder="yourname"
           />
 
