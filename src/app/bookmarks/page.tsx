@@ -1,5 +1,11 @@
 "use client";
-
+// src/app/bookmarks/page.tsx — add this near the top of the file
+import { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "My Bookmarks",
+  description: "Your saved novels on HanaReads.",
+  alternates: { canonical: "/bookmarks" },
+};
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { bookmarksApi } from "@/lib/api";
