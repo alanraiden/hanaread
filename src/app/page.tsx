@@ -3,7 +3,6 @@ import Link from "next/link";
 import NovelCard from "@/components/novel/NovelCard";
 import styles from "./page.module.css";
 
-// Force dynamic rendering — prevents build-time fetch failures on Vercel
 export const dynamic = "force-dynamic";
 
 const API  = process.env.NEXT_PUBLIC_API_URL  || "http://localhost:4000/api";
@@ -12,7 +11,7 @@ const SITE = process.env.NEXT_PUBLIC_SITE_ID  || "site1";
 async function getTrending() {
   try {
     const res = await fetch(`${API}/novels/trending?site=${SITE}&limit=12`, {
-      next: { revalidate: 300 }, // ISR — rebuild every 5 min
+      next: { revalidate: 300 },
     });
     return res.ok ? res.json() : [];
   } catch { return []; }
@@ -28,8 +27,14 @@ async function getNewlyUpdated() {
   } catch { return []; }
 }
 
+// ─── SEO FIX: Unique title + description + canonical for the home page ────────
 export const metadata: Metadata = {
   title: "Home",
+  description:
+    "Discover the best Korean romance novels in English. Read trending titles, explore new translations, and follow your favorite stories — updated weekly.",
+  alternates: {
+    canonical: "/",
+  },
 };
 
 export default async function HomePage() {
@@ -59,6 +64,7 @@ export default async function HomePage() {
         {/* Trending */}
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
+            {/* SEO FIX: h2 was already here — good! */}
             <h2 className={styles.sectionTitle}>Trending this week</h2>
             <Link href="/browse?sort=views" className={styles.seeAll}>See all →</Link>
           </div>
@@ -76,6 +82,7 @@ export default async function HomePage() {
         {/* Recently updated */}
         <section className={styles.section}>
           <div className={styles.sectionHeader}>
+            {/* SEO FIX: h2 was already here — good! */}
             <h2 className={styles.sectionTitle}>Recently updated</h2>
             <Link href="/browse?sort=new" className={styles.seeAll}>See all →</Link>
           </div>

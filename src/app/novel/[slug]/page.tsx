@@ -14,16 +14,43 @@ async function getNovel(slug: string) {
   return res.json();
 }
 
+// ─── SEO FIX: Helper — truncate a string to maxLen chars without cutting words ─
+function truncate(str: string, maxLen: number): string {
+  if (!str || str.length <= maxLen) return str ?? "";
+  return str.slice(0, str.lastIndexOf(" ", maxLen)) + "…";
+}
+
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const novel = await getNovel(params.slug);
   if (!novel) return { title: "Novel not found" };
+
+  // SEO FIX: Keep title under ~50 chars so "Title | HanaReads" fits in 60 chars total.
+  // "| HanaReads" = 12 chars, so novel title should be ≤ 48 chars.
+  const seoTitle = truncate(novel.title, 48);
+
+  // SEO FIX: Unique description per novel — first 155 chars of the synopsis.
+  // 155 chars keeps it within Google's snippet display limit.
+  const seoDescription = novel.description
+    ? truncate(novel.description, 155)
+    : `Read ${novel.title} — a Korean romance novel in English on HanaReads. ${novel.chapterCount ?? 0} chapters available.`;
+
   return {
-    title: novel.title,
-    description: novel.description?.slice(0, 160),
+    // SEO FIX: Short, unique title
+    title: seoTitle,
+
+    // SEO FIX: Unique description per novel
+    description: seoDescription,
+
+    // SEO FIX: Canonical URL — prevents duplicate content if the novel
+    // is accessible from multiple URLs (e.g. with/without trailing slash)
+    alternates: {
+      canonical: `/novel/${params.slug}`,
+    },
+
     openGraph: {
       title: novel.title,
-      description: novel.description?.slice(0, 160),
-      images: novel.cover ? [novel.cover] : [],
+      description: seoDescription,
+      images: novel.cover ? [{ url: novel.cover, width: 170, height: 255, alt: novel.title }] : [],
     },
   };
 }
@@ -53,7 +80,7 @@ export default async function NovelPage({ params }: { params: { slug: string } }
             {novel.cover ? (
               <Image
                 src={novel.cover}
-                alt={novel.title}
+                alt={`${novel.title} cover`}
                 width={170}
                 height={255}
                 className={styles.cover}
@@ -70,6 +97,7 @@ export default async function NovelPage({ params }: { params: { slug: string } }
           </div>
 
           <div className={styles.info}>
+            {/* SEO FIX: h1 is the full novel title (unique per page — good!) */}
             <h1 className={styles.title}>{novel.title}</h1>
             <p className={styles.author}>
               by <span>{novel.author || "Unknown"}</span>
@@ -107,12 +135,15 @@ export default async function NovelPage({ params }: { params: { slug: string } }
 
         {/* Description */}
         <section className={styles.section}>
+          {/* SEO FIX: "Synopsis" is a good, descriptive h2 */}
           <h2 className={styles.sectionTitle}>Synopsis</h2>
           <p className={styles.synopsis}>{novel.description}</p>
         </section>
 
         {/* Chapters */}
         <section className={styles.section}>
+          {/* SEO FIX: Add an h2 for the chapter list section */}
+          <h2 className={styles.sectionTitle}>Chapters</h2>
           <ChapterList novelSlug={novel.slug} totalChapters={novel.chapterCount ?? 0} />
         </section>
 

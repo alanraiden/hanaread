@@ -18,11 +18,16 @@ async function getNovel(slug: string) {
   return res.json();
 }
 
-// Check if an adjacent chapter exists
 async function chapterExists(slug: string, num: number) {
   if (num < 1) return false;
   const res = await fetch(`${API}/chapters/${slug}/${num}`, { cache: "no-store" });
   return res.ok;
+}
+
+// ─── SEO FIX: Helper — truncate without cutting words ────────────────────────
+function truncate(str: string, maxLen: number): string {
+  if (!str || str.length <= maxLen) return str ?? "";
+  return str.slice(0, str.lastIndexOf(" ", maxLen)) + "…";
 }
 
 export async function generateMetadata({
@@ -35,8 +40,35 @@ export async function generateMetadata({
     getNovel(params.slug),
   ]);
   if (!chapter) return { title: "Chapter not found" };
+
+  const novelTitle = novel?.title ?? "";
+
+  // SEO FIX: Title pattern "Novel Name Ch.N — Chapter Title"
+  // Keep the novel name short so the full title stays under 60 chars.
+  // E.g. "My Secret Husband Ch.12 — The Meeting" (38 chars) ✓
+  const shortNovelTitle = truncate(novelTitle, 30);
+  const chapterPart = chapter.title
+    ? `Ch.${chapter.number} — ${truncate(chapter.title, 20)}`
+    : `Chapter ${chapter.number}`;
+  const seoTitle = `${shortNovelTitle} ${chapterPart}`;
+
+  // SEO FIX: Unique description per chapter.
+  // Uses the first sentence of the chapter content as a teaser (~155 chars).
+  const firstSentence = chapter.content
+    ? truncate(chapter.content.replace(/\n+/g, " ").trim(), 130)
+    : null;
+  const seoDescription = firstSentence
+    ? `${firstSentence} — Read ${novelTitle} Chapter ${chapter.number} on HanaReads.`
+    : `Read ${novelTitle} Chapter ${chapter.number} on HanaReads. Free English translation.`;
+
   return {
-    title: `Chapter ${chapter.number}${chapter.title ? ` — ${chapter.title}` : ""} | ${novel?.title ?? ""}`,
+    title: seoTitle,
+    description: truncate(seoDescription, 155),
+
+    // SEO FIX: Canonical URL for each chapter page
+    alternates: {
+      canonical: `/novel/${params.slug}/chapter/${params.num}`,
+    },
   };
 }
 
@@ -76,10 +108,17 @@ export default async function ChapterPage({
         {/* Chapter header */}
         <div className={styles.header}>
           <p className={styles.novelSm}>{novelTitle}</p>
+
+          {/*
+            SEO FIX: Include the NOVEL TITLE in the H1 so every chapter page
+            has a UNIQUE H1. Previously "Chapter 1" was duplicated across all
+            novels. Now it reads "My Secret Husband — Chapter 1 — The Meeting".
+          */}
           <h1 className={styles.title}>
-            Chapter {chapter.number}
+            {novelTitle} — Chapter {chapter.number}
             {chapter.title ? ` — ${chapter.title}` : ""}
           </h1>
+
           <div className={styles.meta}>
             <span>{chapter.wordCount?.toLocaleString()} words</span>
             <span className={styles.dot} />
@@ -105,6 +144,9 @@ export default async function ChapterPage({
 
         {/* Mid ad */}
         <div className={`ad-slot ${styles.adMid}`}>— advertisement —</div>
+
+        {/* SEO FIX: Add h2 for the navigation section */}
+        <h2 className="sr-only">Chapter Navigation</h2>
 
         {/* Prev / Next nav */}
         <div className={styles.chNav}>
