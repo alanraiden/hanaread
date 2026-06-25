@@ -56,20 +56,20 @@ export async function generateStaticParams(): Promise<
 }
 
 async function getChapter(slug: string, num: string) {
-  const res = await fetch(`${API}/chapters/${slug}/${num}`, { cache: "no-store" });
+  const res = await fetch(`${API}/chapters/${slug}/${num}`, { next: { revalidate: 3600 } });
   if (res.status === 404) return null;
   return res.json();
 }
 
 async function getNovel(slug: string) {
-  const res = await fetch(`${API}/novels/${slug}`, { cache: "no-store" });
+  const res = await fetch(`${API}/novels/${slug}`, { next: { revalidate: 3600 } });
   if (!res.ok) return null;
   return res.json();
 }
 
 async function chapterExists(slug: string, num: number) {
   if (num < 1) return false;
-  const res = await fetch(`${API}/chapters/${slug}/${num}`, { cache: "no-store" });
+  const res = await fetch(`${API}/chapters/${slug}/${num}`, { next: { revalidate: 3600 } });
   return res.ok;
 }
 
