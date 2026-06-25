@@ -1,7 +1,7 @@
 .nav {
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 200;
   background: white;
   border-bottom: 0.5px solid var(--border);
 }
@@ -17,7 +17,7 @@
   height: 56px;
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 .logo {
@@ -38,15 +38,26 @@
   font-size: 14px;
   color: var(--text-secondary);
   transition: color 0.15s;
+  white-space: nowrap;
 }
 
 .links a:hover { color: var(--text-primary); }
 
-.searchForm { flex: 1; max-width: 240px; }
+/* ── Search wrapper ── */
+.searchWrapper {
+  position: relative;
+  flex: 1;
+  max-width: 240px;
+}
+
+.searchForm {
+  position: relative;
+  width: 100%;
+}
 
 .searchInput {
   width: 100%;
-  padding: 6px 12px;
+  padding: 6px 28px 6px 12px;
   font-size: 13px;
   border: 0.5px solid var(--border);
   border-radius: var(--radius-md);
@@ -58,6 +69,96 @@
 
 .searchInput:focus { border-color: var(--pink); }
 
+.clearBtn {
+  position: absolute;
+  right: 7px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 2px;
+  line-height: 1;
+  cursor: pointer;
+}
+.clearBtn:hover { color: var(--text-primary); }
+
+/* ── Autocomplete dropdown ── */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.10);
+  overflow: hidden;
+  z-index: 300;
+}
+
+@media (prefers-color-scheme: dark) {
+  .dropdown { background: #1a1a1a; box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+}
+
+.dropItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s;
+  border-bottom: 0.5px solid var(--border);
+}
+.dropItem:last-of-type { border-bottom: none; }
+.dropItem:hover,
+.dropItemActive { background: var(--bg-surface); }
+
+.dropCover {
+  width: 32px;
+  height: 44px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: var(--bg-surface);
+}
+
+.dropTitle {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: left;
+}
+
+.dropRating {
+  font-size: 11px;
+  color: var(--pink);
+  flex-shrink: 0;
+}
+
+.dropSeeAll {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--bg-surface);
+  border: none;
+  border-top: 0.5px solid var(--border);
+  font-size: 12px;
+  color: var(--pink);
+  text-align: center;
+  cursor: pointer;
+  transition: opacity 0.12s;
+}
+.dropSeeAll:hover { opacity: 0.75; }
+
+/* ── Auth area ── */
 .authArea { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
 
 .navBtn {
@@ -68,6 +169,7 @@
   background: transparent;
   color: var(--text-primary);
   transition: background 0.15s;
+  white-space: nowrap;
 }
 
 .navBtn:hover { background: var(--bg-surface); }
@@ -80,11 +182,28 @@
   background: var(--pink);
   color: white;
   transition: opacity 0.15s;
+  white-space: nowrap;
 }
 
 .signupBtn:hover { opacity: 0.88; }
 
+/* ── Mobile ── */
 @media (max-width: 700px) {
+  .inner { gap: 0.75rem; }
   .links { display: none; }
-  .searchForm { max-width: 140px; }
+  .searchWrapper { max-width: none; flex: 1; }
+
+  /* Wider dropdown on mobile */
+  .dropdown {
+    left: -40px;
+    right: -40px;
+  }
+
+  /* Hide "Log in" text button, keep Sign up */
+  .navBtn:not(.signupBtn) { display: none; }
+}
+
+@media (max-width: 400px) {
+  .logo { font-size: 15px; }
+  .signupBtn { padding: 6px 10px; font-size: 12px; }
 }
