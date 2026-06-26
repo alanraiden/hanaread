@@ -5,21 +5,36 @@ import Link from "next/link";
 import { chaptersApi } from "@/lib/api";
 import styles from "./ChapterList.module.css";
 
+interface Chapter {
+  _id: string;
+  number: number;
+  title?: string;
+  createdAt: string;
+}
+
 interface Props {
   novelSlug: string;
   totalChapters: number;
+  // SSR chapters passed from the server component — when provided, ChapterList
+  // uses them as its initial state and skips the client-side fetch entirely,
+  // eliminating the "Loading chapters…" flash on first render.
+  ssrChapters?: Chapter[];
 }
 
-export default function ChapterList({ novelSlug, totalChapters }: Props) {
-  const [chapters, setChapters] = useState<any[]>([]);
-  const [loading, setLoading]   = useState(true);
+export default function ChapterList({ novelSlug, totalChapters, ssrChapters }: Props) {
+  // If the server already fetched chapters, use them immediately — no loading state.
+  const [chapters, setChapters] = useState<Chapter[]>(ssrChapters ?? []);
+  const [loading, setLoading]   = useState(!ssrChapters || ssrChapters.length === 0);
 
   useEffect(() => {
+    // Skip the fetch if the server already provided chapters.
+    if (ssrChapters && ssrChapters.length > 0) return;
+
     chaptersApi.list(novelSlug)
       .then(setChapters)
       .catch(() => setChapters([]))
       .finally(() => setLoading(false));
-  }, [novelSlug]);
+  }, [novelSlug, ssrChapters]);
 
   if (loading) return <p>Loading chapters…</p>;
   if (chapters.length === 0) return <p>No chapters yet.</p>;

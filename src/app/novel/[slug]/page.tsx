@@ -10,73 +10,55 @@ const API  = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 const SITE = process.env.NEXT_PUBLIC_SITE_ID || "site1";
 
 // ─── Static generation ────────────────────────────────────────────────────────
-// At build time Next.js calls this function, pre-renders a page for every slug
-// it returns, and stores the HTML. New slugs added after the build are still
-// handled on-demand (dynamicParams defaults to true) and cached via ISR.
-
+// Return empty array — novel pages are served on-demand via ISR.
+// Attempting to pre-render all novels at build time causes parallel API calls
+// that trigger rate-limiting (HTTP 429) on the EC2 backend, crashing the build.
 export async function generateStaticParams(): Promise<{ slug: string }[]> {
-  const slugs: { slug: string }[] = [];
-  let page    = 1;
-  let hasMore = true;
-
-  while (hasMore) {
-    try {
-      const res = await fetch(
-        `${API}/novels?site=${SITE}&sort=new&limit=100&page=${page}`,
-        { cache: "no-store" }
-      );
-      if (!res.ok) break;
-
-      const data = await res.json();
-      const batch: Array<{ slug: string }> = data.novels ?? [];
-
-      slugs.push(...batch.map((n) => ({ slug: n.slug })));
-
-      hasMore = page < (data.pages ?? 1) && batch.length > 0;
-      page++;
-    } catch {
-      break; // Network error during build — skip remaining pages gracefully
-    }
-  }
-
-  return slugs;
+  return [];
 }
 
 async function getNovel(slug: string) {
   const res = await fetch(`${API}/novels/${slug}`, { next: { revalidate: 600 } });
   if (res.status === 404) return null;
-  return res.json();
+  try { return await res.json(); } catch { return null; }
 }
 
-// ─── SEO FIX: Helper — truncate a string to maxLen chars without cutting words ─
-function truncate(str: string, maxLen: number): string {
-  if (!str || str.length <= maxLen) return str ?? "";
-  return str.slice(0, str.lastIndexOf(" ", maxLen)) + "…";
+// Fetch all chapters for a novel — used for SSR chapter links so Googlebot
+// can crawl every chapter page from the novel page.
+async function getChapters(novelId: string): Promise<Array<{ _id: string; number: number; title: string }>> {
+  try {
+    const res = await fetch(`${API}/chapters/${novelId}?sort=asc&limit=1000`, {
+      next: { revalidate: 600 },
+    });
+    if (!res.ok) return [];
+    const data = await res.json();
+    // API may return { chapters: [...] } or a plain array
+    return data.chapters ?? (Array.isArray(data) ? data : []);
+  } catch {
+    return [];
+  }
 }
 
+// ─── Metadata ─────────────────────────────────────────────────────────────────
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const novel = await getNovel(params.slug);
   if (!novel) return { title: "Novel not found" };
 
-  // SEO FIX: Keep title under ~50 chars so "Title | HanaReads" fits in 60 chars total.
-  // "| HanaReads" = 12 chars, so novel title should be ≤ 48 chars.
-  const seoTitle = truncate(novel.title, 48);
+  // Use the full novel title — never truncate in the <title> tag.
+  // Google handles display truncation in SERPs; adding "…" ourselves wastes
+  // characters that could match search queries.
+  const seoTitle = `${novel.title} | HanaReads`;
 
-  // SEO FIX: Unique description per novel — first 155 chars of the synopsis.
-  // 155 chars keeps it within Google's snippet display limit.
   const seoDescription = novel.description
-    ? truncate(novel.description, 155)
-    : `Read ${novel.title} — a Korean romance novel in English on HanaReads. ${novel.chapterCount ?? 0} chapters available.`;
+    ? novel.description.replace(/\n+/g, " ").trim().slice(0, 155)
+    : `Read ${novel.title} — a Korean novel in English on HanaReads. ${novel.chapterCount ?? 0} chapters available.`;
 
   return {
-    // SEO FIX: Short, unique title
-    title: seoTitle,
-
-    // SEO FIX: Unique description per novel
+    // Use title.absolute so the layout template does not append "| HanaReads"
+    // a second time (which would produce "Novel Title | HanaReads | HanaReads").
+    title: { absolute: seoTitle },
     description: seoDescription,
 
-    // SEO FIX: Canonical URL — prevents duplicate content if the novel
-    // is accessible from multiple URLs (e.g. with/without trailing slash)
     alternates: {
       canonical: `/novel/${params.slug}`,
     },
@@ -84,14 +66,33 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     openGraph: {
       title: novel.title,
       description: seoDescription,
-      images: novel.cover ? [{ url: novel.cover, width: 170, height: 255, alt: novel.title }] : [],
+      url: `https://hanareads.fun/novel/${params.slug}`,
+      type: "book",
+      siteName: "HanaReads",
+      images: novel.cover
+        ? [{ url: novel.cover, width: 170, height: 255, alt: novel.title }]
+        : [],
+    },
+
+    twitter: {
+      card: "summary_large_image",
+      title: novel.title,
+      description: seoDescription,
+      images: novel.cover ? [novel.cover] : [],
     },
   };
 }
 
+// ─── Page ─────────────────────────────────────────────────────────────────────
 export default async function NovelPage({ params }: { params: { slug: string } }) {
   const novel = await getNovel(params.slug);
   if (!novel) notFound();
+
+  // Fetch chapters server-side so they are present in the HTML for Googlebot.
+  // Without this the chapter list is client-rendered and Googlebot sees only
+  // "Loading chapters…" — meaning none of the chapter pages get crawled or
+  // linked from the novel page.
+  const ssrChapters = await getChapters(novel._id);
 
   return (
     <div className={styles.page}>
@@ -100,7 +101,9 @@ export default async function NovelPage({ params }: { params: { slug: string } }
         <nav className={styles.breadcrumb}>
           <Link href="/">Home</Link>
           <span>›</span>
-          {novel.genres?.[0] && <Link href={`/browse?genre=${novel.genres[0]}`}>{novel.genres[0]}</Link>}
+          {novel.genres?.[0] && (
+            <Link href={`/browse?genre=${novel.genres[0]}`}>{novel.genres[0]}</Link>
+          )}
           {novel.genres?.[0] && <span>›</span>}
           <span>{novel.title}</span>
         </nav>
@@ -131,7 +134,6 @@ export default async function NovelPage({ params }: { params: { slug: string } }
           </div>
 
           <div className={styles.info}>
-            {/* SEO FIX: h1 is the full novel title (unique per page — good!) */}
             <h1 className={styles.title}>{novel.title}</h1>
             <p className={styles.author}>
               by <span>{novel.author || "Unknown"}</span>
@@ -167,18 +169,51 @@ export default async function NovelPage({ params }: { params: { slug: string } }
           </div>
         </div>
 
-        {/* Description */}
+        {/* Synopsis */}
         <section className={styles.section}>
-          {/* SEO FIX: "Synopsis" is a good, descriptive h2 */}
           <h2 className={styles.sectionTitle}>Synopsis</h2>
           <p className={styles.synopsis}>{novel.description}</p>
         </section>
 
-        {/* Chapters */}
+        {/* Chapters
+            SSR layer: a plain <ul> of chapter links rendered in the server HTML.
+            Googlebot reads this and can crawl every chapter page.
+            ChapterList renders on top of this with interactive features
+            (search, pagination, etc.) — it should hide this list once mounted
+            to avoid duplication, or you can pass ssrChapters as a prop so
+            ChapterList uses them as its initial state with no loading spinner. */}
         <section className={styles.section}>
-          {/* SEO FIX: Add an h2 for the chapter list section */}
           <h2 className={styles.sectionTitle}>Chapters</h2>
-          <ChapterList novelSlug={novel.slug} totalChapters={novel.chapterCount ?? 0} />
+
+          {ssrChapters.length > 0 ? (
+            <>
+              {/* SEO: server-rendered chapter links visible to Googlebot */}
+              <ul className={styles.ssrChapterList}>
+                {ssrChapters.map((ch) => (
+                  <li key={ch._id}>
+                    <Link href={`/novel/${novel.slug}/chapter/${ch.number}`}>
+                      Chapter {ch.number}{ch.title && !/^chapter\s*\d+$/i.test(ch.title.trim()) ? ` — ${ch.title}` : ""}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Interactive chapter list — receives SSR chapters so it can
+                  render immediately without a loading state. Update ChapterList
+                  to accept and use ssrChapters as its initial chapters prop. */}
+              <ChapterList
+                novelSlug={novel.slug}
+                totalChapters={novel.chapterCount ?? 0}
+                ssrChapters={ssrChapters}
+              />
+            </>
+          ) : (
+            // Fallback if chapter fetch failed — ChapterList handles its own fetch
+            <ChapterList
+              novelSlug={novel.slug}
+              totalChapters={novel.chapterCount ?? 0}
+            />
+          )}
         </section>
 
         {/* Bottom ad */}
