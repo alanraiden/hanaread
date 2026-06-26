@@ -159,15 +159,11 @@ export async function generateMetadata({
     ? `Chapter ${chapter.number} — ${chapter.title}`
     : `Chapter ${chapter.number}`;
 
-  // FIX 2 — Keep full novel title; only truncate if the combined string
-  // exceeds the 65-char SERP budget.
-  // Use title.absolute so the layout template does NOT append "| HanaReads"
-  // again — without this the site name was doubled in the <title> tag.
-  const fullSeoTitle = `${novelTitle} ${chapterLabel} | HanaReads`;
-  const seoTitle =
-    fullSeoTitle.length <= 65
-      ? fullSeoTitle
-      : `${truncate(novelTitle, 65 - chapterLabel.length - 12)} ${chapterLabel} | HanaReads`;
+  // Always use the full novel title — never truncate it in the <title> tag.
+  // Google handles display truncation in SERPs on their side; adding "…"
+  // ourselves is worse than a longer title because it makes the tag look broken
+  // and wastes the characters Google would otherwise use to match search queries.
+  const seoTitle = `${novelTitle} ${chapterLabel} | HanaReads`;
 
   // FIX 3 — Pull description from the first real prose paragraph, not the
   // raw content start which may contain junk header lines.
