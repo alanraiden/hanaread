@@ -2,11 +2,24 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import styles from "../static-page.module.css";
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://hanareads.fun";
+
 export const metadata: Metadata = {
   title: "About Us",
   description:
-    "Learn about HanaReads — a fan-driven library dedicated to bringing Korean romance novels to English-speaking readers worldwide.",
+    "Learn about HanaReads — a fan-driven library dedicated to bringing Korean web novels to English-speaking readers worldwide.",
   alternates: { canonical: "/about" },
+
+  // SEO FIX: previously missing — this page inherited the homepage's
+  // og:url/og:title/og:description from the root layout, so social shares
+  // of /about displayed as if they were the homepage.
+  openGraph: {
+    title: "About Us | HanaReads",
+    description:
+      "Learn about HanaReads — a fan-driven library dedicated to bringing Korean web novels to English-speaking readers worldwide.",
+    url: `${SITE_URL}/about`,
+    type: "website",
+  },
 };
 
 export default function AboutPage() {

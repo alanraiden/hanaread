@@ -1,102 +1,40 @@
-"use client";
+import RankingsTabs from "./RankingsTabs";
+import type { Novel } from "@/types/api";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import styles from "./page.module.css";
+const API  = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+const SITE = process.env.NEXT_PUBLIC_SITE_ID || "site1";
 
-const API  = process.env.NEXT_PUBLIC_API_URL  || "http://localhost:4000/api";
-const SITE = process.env.NEXT_PUBLIC_SITE_ID  || "site1";
+const TAB_SORTS = ["rating", "views", "new"] as const;
 
-const TABS = [
-  { label: "Top rated",        sort: "rating" },
-  { label: "Most read",        sort: "views"  },
-  { label: "Recently updated", sort: "new"    },
-];
-
-async function fetchRanking(sort: string, limit = 20): Promise<any[]> {
+// ─── SEO FIX: server-side fetch ───────────────────────────────────────────────
+// The old /rankings page was "use client" and fetched each tab's list inside
+// useEffect, so Googlebot's HTML snapshot showed the tab buttons but none of
+// the ranked novels — a high-intent landing page indexed with zero content.
+//
+// Fetch all three tabs (rating / views / new) server-side up front. This
+// means every ranking list is present in the initial HTML — not just the
+// default "Top rated" tab — so all three views are crawlable, and switching
+// tabs client-side afterwards is instant with no extra request.
+async function getRankings(sort: string, limit = 20): Promise<Novel[]> {
   try {
     const res = await fetch(`${API}/novels?site=${SITE}&sort=${sort}&limit=${limit}`, {
-      cache: "no-store",
+      next: { revalidate: 300 },
     });
+    if (!res.ok) return [];
     const data = await res.json();
-    return data.novels || [];
-  } catch { return []; }
+    return data.novels ?? [];
+  } catch {
+    return [];
+  }
 }
 
-export default function RankingsPage() {
-  const [activeTab, setActiveTab] = useState(0);
-  const [novels,    setNovels]    = useState<any[]>([]);
-  const [loading,   setLoading]   = useState(true);
+export default async function RankingsPage() {
+  const results = await Promise.all(TAB_SORTS.map((sort) => getRankings(sort)));
 
-  useEffect(() => {
-    setLoading(true);
-    fetchRanking(TABS[activeTab].sort, 20)
-      .then(setNovels)
-      .finally(() => setLoading(false));
-  }, [activeTab]);
+  const initialData: Record<string, Novel[]> = {};
+  TAB_SORTS.forEach((sort, i) => {
+    initialData[sort] = results[i];
+  });
 
-  return (
-    <div className={styles.page}>
-      <div className="container">
-        <h1 className={styles.heading}>Rankings</h1>
-
-        <div className={`ad-slot ${styles.adTop}`}>— advertisement —</div>
-
-        {/* Tab bar */}
-        <div className={styles.tabs}>
-          {TABS.map((tab, i) => (
-            <button
-              key={tab.sort}
-              className={`${styles.tab} ${i === activeTab ? styles.tabActive : ""}`}
-              onClick={() => setActiveTab(i)}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Rank list */}
-        {loading ? (
-          <div className={styles.rankList}>
-            {Array.from({ length: 10 }).map((_, i) => (
-              <div key={i} className={styles.skeleton} />
-            ))}
-          </div>
-        ) : novels.length === 0 ? (
-          <p className={styles.empty}>No data yet.</p>
-        ) : (
-          <div className={styles.rankList}>
-            {novels.map((n, i) => (
-              <Link key={n._id} href={`/novel/${n.slug}`} className={styles.rankItem}>
-                <span className={`${styles.rankNum} ${i < 3 ? styles.top3 : ""}`}>
-                  {i + 1}
-                </span>
-                <div
-                  className={styles.rankCover}
-                  style={n.cover ? {
-                    backgroundImage: `url(${n.cover})`,
-                    backgroundSize: "cover",
-                    backgroundPosition: "center",
-                  } : {}}
-                />
-                <div className={styles.rankInfo}>
-                  <div className={styles.rankTitle}>{n.title}</div>
-                  <div className={styles.rankMeta}>
-                    ★ {Number(n.rating).toFixed(1)} · {n.status}
-                  </div>
-                </div>
-                <span className={styles.rankViews}>
-                  {n.views >= 1000
-                    ? `${(n.views / 1000).toFixed(1)}k`
-                    : n.views}
-                </span>
-              </Link>
-            ))}
-          </div>
-        )}
-
-        <div className={`ad-slot ${styles.adBottom}`}>— advertisement —</div>
-      </div>
-    </div>
-  );
+  return <RankingsTabs initialData={initialData} />;
 }
