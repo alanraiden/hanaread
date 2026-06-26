@@ -8,55 +8,33 @@ const API  = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 const SITE = process.env.NEXT_PUBLIC_SITE_ID || "site1";
 
 // ─── Static generation ────────────────────────────────────────────────────────
+// Return an empty array so nothing is pre-rendered at build time.
+// Next.js (dynamicParams = true by default) still serves every chapter page —
+// the first visitor triggers an on-demand render which is then cached and
+// revalidated every hour via ISR (see revalidate: 3600 on the fetches below).
+//
+// Why not pre-render everything?
+// With 10,000+ chapter pages, generateStaticParams fires thousands of API
+// calls in parallel during the build, hitting the EC2 backend hard enough
+// to trigger rate-limiting (HTTP 429 "Too many requests"). The JSON parse
+// then crashes on the plain-text error response, failing the entire build.
+// Pure ISR is the correct approach at this scale.
 export async function generateStaticParams(): Promise<
   { slug: string; num: string }[]
 > {
-  const allParams: { slug: string; num: string }[] = [];
-  let page    = 1;
-  let hasMore = true;
-
-  const novels: Array<{ slug: string; chapterCount: number }> = [];
-
-  while (hasMore) {
-    try {
-      const res = await fetch(
-        `${API}/novels?site=${SITE}&sort=new&limit=100&page=${page}`,
-        { cache: "no-store" }
-      );
-      if (!res.ok) break;
-
-      const data = await res.json();
-      const batch: Array<{ slug: string; chapterCount: number }> =
-        data.novels ?? [];
-
-      novels.push(...batch);
-      hasMore = page < (data.pages ?? 1) && batch.length > 0;
-      page++;
-    } catch {
-      break;
-    }
-  }
-
-  for (const novel of novels) {
-    const count = novel.chapterCount ?? 0;
-    for (let i = 1; i <= count; i++) {
-      allParams.push({ slug: novel.slug, num: String(i) });
-    }
-  }
-
-  return allParams;
+  return [];
 }
 
 async function getChapter(slug: string, num: string) {
   const res = await fetch(`${API}/chapters/${slug}/${num}`, { next: { revalidate: 3600 } });
-  if (res.status === 404) return null;
-  return res.json();
+  if (!res.ok) return null;
+  try { return await res.json(); } catch { return null; }
 }
 
 async function getNovel(slug: string) {
   const res = await fetch(`${API}/novels/${slug}`, { next: { revalidate: 3600 } });
   if (!res.ok) return null;
-  return res.json();
+  try { return await res.json(); } catch { return null; }
 }
 
 async function chapterExists(slug: string, num: number) {
