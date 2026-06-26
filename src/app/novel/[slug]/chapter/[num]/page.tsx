@@ -56,10 +56,19 @@ function truncate(str: string, maxLen: number): string {
  * scrapers store as the title.  Those generic labels caused the H1 and
  * <title> to read "…Chapter 12 — Chapter 12".
  */
-function isRealTitle(title: string | undefined | null): boolean {
+function isRealTitle(title: string | undefined | null, novelTitle?: string): boolean {
   if (!title || !title.trim()) return false;
-  // Matches: "Chapter 12", "Chapter 12.", "chapter 12 — foo", "Ch. 12" etc.
-  return !/^ch(apter)?\.?\s*\d+/i.test(title.trim());
+  const t = title.trim();
+  // Reject "Chapter 12", "Ch.12", "chapter 12 — foo" etc.
+  if (/^ch(apter)?\.?\s*\d+/i.test(t)) return false;
+  // Reject scraper junk: titles that are just the novel name (same or starts with it)
+  if (novelTitle) {
+    const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (norm(t).startsWith(norm(novelTitle).slice(0, 20))) return false;
+  }
+  // Reject common scraper noise patterns
+  if (/read\s+online|free\s+online|light\s*novel|web\s*novel/i.test(t)) return false;
+  return true;
 }
 
 /**
@@ -142,15 +151,18 @@ export async function generateMetadata({
 
   const novelTitle = novel?.title ?? "";
 
-  // FIX 2 — Build chapter label; only append chapter.title when it's a real
-  // descriptive title, not a generic "Chapter N" repeat.
-  const realTitle = isRealTitle(chapter.title);
+  // FIX 2 — Build chapter label. Pass novelTitle so isRealTitle can also
+  // reject scraper junk like "Novel Name - Read Online Free" stored as the
+  // chapter title. Only append chapter.title when it's genuinely descriptive.
+  const realTitle = isRealTitle(chapter.title, novelTitle);
   const chapterLabel = realTitle
     ? `Chapter ${chapter.number} — ${chapter.title}`
     : `Chapter ${chapter.number}`;
 
   // FIX 2 — Keep full novel title; only truncate if the combined string
   // exceeds the 65-char SERP budget.
+  // Use title.absolute so the layout template does NOT append "| HanaReads"
+  // again — without this the site name was doubled in the <title> tag.
   const fullSeoTitle = `${novelTitle} ${chapterLabel} | HanaReads`;
   const seoTitle =
     fullSeoTitle.length <= 65
@@ -167,7 +179,7 @@ export async function generateMetadata({
   const canonicalUrl = `https://hanareads.fun/novel/${params.slug}/chapter/${params.num}`;
 
   return {
-    title: seoTitle,
+    title: { absolute: seoTitle },
     description: truncate(seoDescription, 155),
 
     alternates: {
@@ -214,7 +226,7 @@ export default async function ChapterPage({
 
   // FIX 1 — Only show chapter.title in the H1 when it's a real descriptive
   // title; prevents "Novel Name — Chapter 12 — Chapter 12" duplication.
-  const realTitle = isRealTitle(chapter.title);
+  const realTitle = isRealTitle(chapter.title, novelTitle);
 
   return (
     <div className={styles.page}>
