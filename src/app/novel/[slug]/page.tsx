@@ -198,13 +198,9 @@ export default async function NovelPage({ params }: { params: { slug: string } }
                 ))}
               </ul>
 
-              {/* Interactive chapter list — receives SSR chapters so it can
-                  render immediately without a loading state. Update ChapterList
-                  to accept and use ssrChapters as its initial chapters prop. */}
               <ChapterList
                 novelSlug={novel.slug}
                 totalChapters={novel.chapterCount ?? 0}
-                ssrChapters={ssrChapters}
               />
             </>
           ) : (
