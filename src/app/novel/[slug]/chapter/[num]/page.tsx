@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import ReaderControls from "./ReaderControls";
 import styles from "./page.module.css";
+import Comments from './Comments';
 
 const API  = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 const SITE = process.env.NEXT_PUBLIC_SITE_ID || "site1";
@@ -301,6 +302,8 @@ export default async function ChapterPage({
 
         {/* Bottom ad */}
         <div className={`ad-slot ${styles.adBottom}`}>— advertisement —</div>
+        {/* Comments */}
+        <Comments novelSlug={novelSlug} chapterNumber={currentNum} />
       </div>
     </div>
   );
