@@ -46,7 +46,7 @@ export default async function HomePage() {
       <section className={styles.hero}>
         <div className="container">
           <h1 className={styles.heroTitle}>
-            Discover <em>Korean romance</em> novels in English
+            Discover <em>Korean </em> novels in English
           </h1>
           <p className={styles.heroSub}>
             Fresh translations, weekly updates, and a community of readers who love the same stories you do.
@@ -59,7 +59,7 @@ export default async function HomePage() {
       </section>
 
       <div className="container">
-        <div className={`ad-slot ${styles.adTop}`}>— advertisement —</div>
+        
 
         {/* Trending */}
         <section className={styles.section}>
@@ -77,7 +77,7 @@ export default async function HomePage() {
           )}
         </section>
 
-        <div className={`ad-slot ${styles.adMid}`}>— advertisement —</div>
+        
 
         {/* Recently updated */}
         <section className={styles.section}>
