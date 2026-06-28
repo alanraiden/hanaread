@@ -6,30 +6,41 @@ const nextConfig = {
     ],
   },
 
-  // ─── SEO FIX: Security Headers ───────────────────────────────────────────
-  // Fixes: "Missing Secure Referrer-Policy Header", "Missing X-Frame-Options Header",
-  //        "Missing X-Content-Type-Options Header", "Missing Content-Security-Policy Header"
   async headers() {
     return [
+      // ─── Sitemap: clean XML headers, no RSC Vary ──────────────────────────
+      // Must come BEFORE the catch-all rule so it takes precedence.
+      // Removes the `Vary: RSC, Next-Router-*` headers that MetadataRoute
+      // would inject and that confuse Google's sitemap parser.
       {
-        source: "/(.*)", // apply to ALL pages
+        source: "/sitemap.xml",
         headers: [
+          { key: "Content-Type",  value: "application/xml; charset=utf-8" },
+          { key: "Cache-Control", value: "public, max-age=0, s-maxage=43200, stale-while-revalidate=86400" },
+          // Overwrite Vary to a neutral value — prevents GSC from seeing RSC variants
+          { key: "Vary",          value: "Accept-Encoding" },
+          // Prevent search engines treating the sitemap as a page to index
+          { key: "X-Robots-Tag", value: "noindex" },
+        ],
+      },
+
+      // ─── robots.txt: no caching issues ───────────────────────────────────
+      {
+        source: "/robots.txt",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=86400" },
+        ],
+      },
+
+      // ─── Security headers for all other pages ────────────────────────────
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "X-Frame-Options",        value: "SAMEORIGIN" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy",        value: "strict-origin-when-cross-origin" },
           {
-            key: "X-Frame-Options",
-            value: "SAMEORIGIN",
-          },
-          {
-            key: "X-Content-Type-Options",
-            value: "nosniff",
-          },
-          {
-            key: "Referrer-Policy",
-            value: "strict-origin-when-cross-origin",
-          },
-          {
-            // NOTE: Adjust this policy to match any third-party scripts/fonts you load.
-            // If you use Google Fonts, add: style-src 'self' 'unsafe-inline' https://fonts.googleapis.com
-            key: "Content-Security-Policy",
+            key:   "Content-Security-Policy",
             value: [
               "default-src 'self'",
               "img-src * data: blob:",
