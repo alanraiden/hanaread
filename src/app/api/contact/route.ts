@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       from: FROM_EMAIL,
       to: TO_EMAIL,
       // Reply-To lets you hit Reply in Gmail and it goes to the user, not yourself
-      replyTo: `${name} <${email}>`,
+      reply_to: `${name} <${email}>`,
       subject: `[HanaReads Contact] ${subjectLabel} — ${name}`,
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; color: #1a1a1a;">
