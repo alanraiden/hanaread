@@ -4,18 +4,53 @@ import { useState } from "react";
 import Link from "next/link";
 import styles from "../static-page.module.css";
 
-export default function ContactPage() {
-  const [sent, setSent] = useState(false);
-  const [form, setForm] = useState({ name: "", email: "", subject: "", message: "" });
+type FormState = {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+};
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    setForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
+type Status = "idle" | "loading" | "success" | "error";
+
+export default function ContactPage() {
+  const [status, setStatus] = useState<Status>("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [form, setForm] = useState<FormState>({
+    name: "", email: "", subject: "", message: "",
+  });
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Replace with your real form endpoint (e.g. Formspree, your own API route, etc.)
-    setSent(true);
+    setStatus("loading");
+    setErrorMsg("");
+
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setErrorMsg(data.error || "Something went wrong. Please try again.");
+        setStatus("error");
+        return;
+      }
+
+      setStatus("success");
+    } catch {
+      setErrorMsg("Network error. Please check your connection and try again.");
+      setStatus("error");
+    }
   };
 
   return (
@@ -35,13 +70,19 @@ export default function ContactPage() {
         <div className={styles.layout}>
           {/* Contact form */}
           <section className={styles.prose}>
-            {sent ? (
+            {status === "success" ? (
               <div style={{ padding: "2rem 0" }}>
                 <p style={{ fontSize: 28, marginBottom: 12 }}>🌸</p>
                 <h2 style={{ marginTop: 0, marginBottom: "0.5rem" }}>Message sent!</h2>
-                <p>Thanks for reaching out. We&rsquo;ll get back to you at <strong>{form.email}</strong> within 1–2 business days.</p>
+                <p>
+                  Thanks for reaching out. We&rsquo;ll get back to you at{" "}
+                  <strong>{form.email}</strong> within 1–2 business days.
+                </p>
                 <button
-                  onClick={() => { setSent(false); setForm({ name: "", email: "", subject: "", message: "" }); }}
+                  onClick={() => {
+                    setStatus("idle");
+                    setForm({ name: "", email: "", subject: "", message: "" });
+                  }}
                   className={styles.submitBtn}
                   style={{ marginTop: "1.25rem" }}
                 >
@@ -62,6 +103,7 @@ export default function ContactPage() {
                       value={form.name}
                       onChange={handleChange}
                       required
+                      disabled={status === "loading"}
                     />
                   </div>
                   <div className={styles.field}>
@@ -75,6 +117,7 @@ export default function ContactPage() {
                       value={form.email}
                       onChange={handleChange}
                       required
+                      disabled={status === "loading"}
                     />
                   </div>
                 </div>
@@ -88,6 +131,7 @@ export default function ContactPage() {
                     value={form.subject}
                     onChange={handleChange}
                     required
+                    disabled={status === "loading"}
                   >
                     <option value="">Select a topic…</option>
                     <option value="novel-suggestion">Novel suggestion</option>
@@ -109,10 +153,32 @@ export default function ContactPage() {
                     value={form.message}
                     onChange={handleChange}
                     required
+                    disabled={status === "loading"}
                   />
                 </div>
 
-                <button type="submit" className={styles.submitBtn}>Send message →</button>
+                {status === "error" && (
+                  <p style={{
+                    color: "#dc2626",
+                    background: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    borderRadius: 6,
+                    padding: "0.75rem 1rem",
+                    margin: "0 0 0.5rem",
+                    fontSize: "0.9rem",
+                  }}>
+                    {errorMsg}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  className={styles.submitBtn}
+                  disabled={status === "loading"}
+                  style={{ opacity: status === "loading" ? 0.7 : 1 }}
+                >
+                  {status === "loading" ? "Sending…" : "Send message →"}
+                </button>
               </form>
             )}
           </section>
@@ -122,21 +188,25 @@ export default function ContactPage() {
             <div className={styles.card}>
               <p className={styles.cardTitle}>Response time</p>
               <p className={styles.cardText}>
-                We typically reply within <strong style={{ color: "var(--text-primary)" }}>1–2 business days</strong>. For urgent copyright matters we aim to respond within 24 hours.
+                We typically reply within{" "}
+                <strong style={{ color: "var(--text-primary)" }}>1–2 business days</strong>.
+                For urgent copyright matters we aim to respond within 24 hours.
               </p>
             </div>
 
             <div className={styles.card}>
               <p className={styles.cardTitle}>Suggest a novel</p>
               <p className={styles.cardText}>
-                Know a Korean romance we haven&rsquo;t covered yet? Use the contact form and select <em>Novel suggestion</em> — we love new recommendations.
+                Know a Korean romance we haven&rsquo;t covered yet? Use the contact form and
+                select <em>Novel suggestion</em> — we love new recommendations.
               </p>
             </div>
 
             <div className={styles.card}>
               <p className={styles.cardTitle}>Copyright concerns</p>
               <p className={styles.cardText}>
-                If you are a rights holder and have concerns about content on this platform, please contact us and select <em>Copyright / DMCA</em> as the subject.
+                If you are a rights holder and have concerns about content on this platform,
+                please contact us and select <em>Copyright / DMCA</em> as the subject.
               </p>
               <p className={styles.cardText} style={{ marginTop: "0.5rem" }}>
                 We take these matters seriously and will respond promptly.
