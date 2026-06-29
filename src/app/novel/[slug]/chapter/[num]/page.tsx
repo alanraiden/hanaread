@@ -4,6 +4,8 @@ import Link from "next/link";
 import ReaderControls from "./ReaderControls";
 import styles from "./page.module.css";
 import Comments from './Comments';
+import NovelCard from '@/components/novel/NovelCard';
+import suggestedStyles from './suggested.module.css';
 
 const API  = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 const SITE = process.env.NEXT_PUBLIC_SITE_ID || "site1";
@@ -42,6 +44,27 @@ async function chapterExists(slug: string, num: number) {
   if (num < 1) return false;
   const res = await fetch(`${API}/chapters/${slug}/${num}`, { next: { revalidate: 3600 } });
   return res.ok;
+}
+
+// Fetch a random page of novels and pick 3 that aren't the current novel.
+async function getSuggestedNovels(currentSlug: string): Promise<Array<{
+  _id: string; slug: string; title: string; cover?: string;
+  status: string; rating: number; chapterCount?: number;
+}>> {
+  try {
+    const page = Math.floor(Math.random() * 5) + 1;
+    const res = await fetch(
+      `${API}/novels?site=${SITE}&sort=popular&limit=10&page=${page}`,
+      { next: { revalidate: 3600 } }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    const novels: Array<{ _id: string; slug: string; title: string; cover?: string; status: string; rating: number; chapterCount?: number }> =
+      data.novels ?? (Array.isArray(data) ? data : []);
+    return novels.filter((n) => n.slug !== currentSlug).slice(0, 3);
+  } catch {
+    return [];
+  }
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -209,11 +232,12 @@ export default async function ChapterPage({
 }) {
   const currentNum = Number(params.num);
 
-  const [chapter, novel, hasPrev, hasNext] = await Promise.all([
+  const [chapter, novel, hasPrev, hasNext, suggestedNovels] = await Promise.all([
     getChapter(params.slug, params.num),
     getNovel(params.slug),
     chapterExists(params.slug, currentNum - 1),
     chapterExists(params.slug, currentNum + 1),
+    getSuggestedNovels(params.slug),
   ]);
 
   if (!chapter) notFound();
@@ -302,6 +326,18 @@ export default async function ChapterPage({
 
         {/* Bottom ad */}
         <div className={`ad-slot ${styles.adBottom}`}>— advertisement —</div>
+        {/* You might also like */}
+        {suggestedNovels.length > 0 && (
+          <section className={suggestedStyles.section}>
+            <h2 className={suggestedStyles.heading}>You might also like</h2>
+            <div className={suggestedStyles.grid}>
+              {suggestedNovels.map((novel) => (
+                <NovelCard key={novel._id} novel={novel} />
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Comments */}
         <Comments novelSlug={novelSlug} chapterNumber={currentNum} />
       </div>
