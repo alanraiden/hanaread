@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 const LAST_UPDATED = "25 June 2026";
-const CONTACT_EMAIL = "privacy@hanareads.fun"; // ← update to your real address
+const CONTACT_EMAIL = "idenwebstudio@gmail.com"; // ← update to your real address
 
 export default function PrivacyPage() {
   return (
