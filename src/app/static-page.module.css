@@ -221,3 +221,8 @@
   color: var(--text-secondary);
   line-height: 1.6;
 }
+/* ── Select dropdown dark mode fix ───────────────────────────────────── */
+.input option {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
