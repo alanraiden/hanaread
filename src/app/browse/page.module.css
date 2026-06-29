@@ -351,3 +351,148 @@
 @media (prefers-color-scheme: dark) {
   .sortSelect { background: #1a1a1a; }
 }
+/* ── Mobile filter bar ── */
+.mobileBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 1.25rem;
+}
+
+.filterToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  padding: 7px 12px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.filterToggle:hover { border-color: var(--pink); color: var(--pink); }
+
+.filterBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--pink);
+  color: white;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.mobileSortSelect {
+  flex: 1;
+  font-size: 13px;
+  padding: 7px 10px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.mobileSortSelect option {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+/* Hide mobile bar on desktop, hide desktop sort on mobile */
+@media (min-width: 769px) {
+  .mobileBar { display: none; }
+  .desktopSortSelect { display: block; }
+}
+
+.desktopSortSelect {
+  display: none;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 0.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.desktopSortSelect option {
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+/* ── Mobile filter drawer ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+}
+
+.drawer {
+  width: 100%;
+  max-height: 80vh;
+  background: var(--bg-base);
+  border-radius: 16px 16px 0 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.25rem;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.drawerTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.drawerClose {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.drawerBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+}
+
+.drawerFooter {
+  padding: 1rem 1.25rem;
+  border-top: 0.5px solid var(--border);
+}
+
+.drawerApply {
+  width: 100%;
+  padding: 12px;
+  background: var(--pink);
+  color: white;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+@media (prefers-color-scheme: dark) {
+  .mobileSortSelect { background: #1a1a1a; }
+  .desktopSortSelect { background: #1a1a1a; }
+  .drawer { background: #111; }
+}
