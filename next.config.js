@@ -5,25 +5,17 @@ const nextConfig = {
       { protocol: "https", hostname: "**" },
     ],
   },
-
   async headers() {
     return [
       // ─── Sitemap: clean XML headers, no RSC Vary ──────────────────────────
-      // Must come BEFORE the catch-all rule so it takes precedence.
-      // Removes the `Vary: RSC, Next-Router-*` headers that MetadataRoute
-      // would inject and that confuse Google's sitemap parser.
       {
         source: "/sitemap.xml",
         headers: [
           { key: "Content-Type",  value: "application/xml; charset=utf-8" },
           { key: "Cache-Control", value: "public, max-age=0, s-maxage=43200, stale-while-revalidate=86400" },
-          // Overwrite Vary to a neutral value — prevents GSC from seeing RSC variants
           { key: "Vary",          value: "Accept-Encoding" },
-          // Prevent search engines treating the sitemap as a page to index
-          { key: "X-Robots-Tag", value: "noindex" },
         ],
       },
-
       // ─── robots.txt: no caching issues ───────────────────────────────────
       {
         source: "/robots.txt",
@@ -31,7 +23,6 @@ const nextConfig = {
           { key: "Cache-Control", value: "public, max-age=86400" },
         ],
       },
-
       // ─── Security headers for all other pages ────────────────────────────
       {
         source: "/(.*)",
