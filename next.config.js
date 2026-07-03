@@ -8,14 +8,7 @@ const nextConfig = {
   async headers() {
     return [
       // ─── Sitemap: clean XML headers, no RSC Vary ──────────────────────────
-      {
-        source: "/sitemap.xml",
-        headers: [
-          { key: "Content-Type",  value: "application/xml; charset=utf-8" },
-          { key: "Cache-Control", value: "public, max-age=0, s-maxage=43200, stale-while-revalidate=86400" },
-          { key: "Vary",          value: "Accept-Encoding" },
-        ],
-      },
+     
       // ─── robots.txt: no caching issues ───────────────────────────────────
       {
         source: "/robots.txt",
