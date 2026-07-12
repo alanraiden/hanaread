@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import Link from "next/link";
 import NovelCard from "@/components/novel/NovelCard";
+import ContinueReading from "@/components/reading/ContinueReading";
 import styles from "./page.module.css";
 
 export const dynamic = "force-dynamic";
@@ -59,7 +60,10 @@ export default async function HomePage() {
       </section>
 
       <div className="container">
-        
+        {/* Continue reading — client-side, reads localStorage, renders
+            nothing until it has data so it never causes hydration flicker
+            on first-time visitors. */}
+        <ContinueReading />
 
         {/* Trending */}
         <section className={styles.section}>
