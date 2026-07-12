@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import ChapterList from "./ChapterList";
 import BookmarkBtn from "./BookmarkBtn";
+import NovelReadAction from "@/components/reading/NovelReadAction";
 import styles from "./page.module.css";
 
 const API  = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
@@ -161,9 +162,7 @@ export default async function NovelPage({ params }: { params: { slug: string } }
             </div>
 
             <div className={styles.actions}>
-              <Link href={`/novel/${novel.slug}/chapter/1`} className={styles.btnRead}>
-                Read from Chapter 1
-              </Link>
+              <NovelReadAction slug={novel.slug} className={styles.btnRead} />
               <BookmarkBtn novelId={novel._id} initialBookmarked={false} />
             </div>
           </div>
