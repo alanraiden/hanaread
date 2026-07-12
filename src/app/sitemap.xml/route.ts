@@ -35,6 +35,10 @@ interface NovelSummary {
   updatedAt:    string;
 }
 
+interface ChapterMeta {
+  number: number;
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function fetchAllNovels(): Promise<NovelSummary[]> {
@@ -63,6 +67,48 @@ async function fetchAllNovels(): Promise<NovelSummary[]> {
   }
 
   return novels;
+}
+
+/**
+ * Fetch the REAL chapter numbers that exist for a novel — never assume
+ * 1..chapterCount is contiguous. Scraped novels frequently have gaps
+ * (skipped/missing/removed chapters), and `chapterCount` is a count, not
+ * a guarantee every number up to it exists. Sitemap URLs built on that
+ * assumption 404 for real crawlers (confirmed via Cloudflare logs showing
+ * Googlebot/Applebot/Bingbot hitting fabricated chapter URLs), which wastes
+ * crawl budget and hurts crawl trust on a still-young domain.
+ */
+async function fetchChapterNumbers(slug: string): Promise<number[]> {
+  try {
+    const res = await fetch(
+      `${API}/chapters/${slug}?sort=asc&limit=5000`,
+      { next: { revalidate: 43200 } }
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    const chapters: ChapterMeta[] = data.chapters ?? (Array.isArray(data) ? data : []);
+    return chapters.map((c) => c.number).filter((n) => Number.isFinite(n));
+  } catch {
+    return [];
+  }
+}
+
+/** Run async work over a list with limited concurrency, to avoid hammering the API. */
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let i = 0;
+  async function worker() {
+    while (i < items.length) {
+      const idx = i++;
+      results[idx] = await fn(items[idx]);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
 }
 
 /** Escape the five XML special characters so URLs are safe in <loc> tags. */
@@ -95,10 +141,15 @@ export async function GET() {
     priority:   "0.8",
   }));
 
-  // 3. Chapter pages — derived from chapterCount, no extra API calls needed
-  const chapterUrls = novels.flatMap((n) =>
-    Array.from({ length: n.chapterCount ?? 0 }, (_, i) => ({
-      url:        `${BASE_URL}/novel/${n.slug}/chapter/${i + 1}`,
+  // 3. Chapter pages — built from each novel's REAL chapter numbers (fetched
+  // with limited concurrency so we don't trigger the backend's rate limiter),
+  // never assumed from chapterCount. Novels with zero returned chapters are
+  // skipped rather than falling back to a guessed range.
+  const chapterNumberLists = await mapWithConcurrency(novels, 5, (n) => fetchChapterNumbers(n.slug));
+
+  const chapterUrls = novels.flatMap((n, idx) =>
+    chapterNumberLists[idx].map((num) => ({
+      url:        `${BASE_URL}/novel/${n.slug}/chapter/${num}`,
       lastmod:    new Date(n.updatedAt).toISOString(),
       changefreq: "yearly",
       priority:   "0.6",
