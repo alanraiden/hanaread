@@ -20,9 +20,27 @@ const SITE = process.env.NEXT_PUBLIC_SITE_ID || "site1";
 async function getNovels(searchParams: {
   [key: string]: string | string[] | undefined;
 }): Promise<{ novels: Novel[]; total: number }> {
+  const q      = typeof searchParams.q      === "string" ? searchParams.q.trim() : "";
   const sort   = typeof searchParams.sort   === "string" ? searchParams.sort   : "views";
   const status = typeof searchParams.status === "string" ? searchParams.status : "";
   const genre  = typeof searchParams.genre  === "string" ? searchParams.genre  : "";
+
+  // A search term takes over completely — it hits the dedicated /search
+  // endpoint (same one the navbar autocomplete uses), which isn't aware of
+  // sort/status/genre, rather than the generic /novels listing endpoint
+  // which has no title-search support at all.
+  if (q) {
+    try {
+      const qs = new URLSearchParams({ q, site: SITE, page: "1", limit: "24" }).toString();
+      const res = await fetch(`${API}/search?${qs}`, { next: { revalidate: 60 } });
+      if (!res.ok) return { novels: [], total: 0 };
+      const data = await res.json();
+      const novels: Novel[] = data.novels ?? data.results ?? [];
+      return { novels, total: data.total ?? novels.length };
+    } catch {
+      return { novels: [], total: 0 };
+    }
+  }
 
   const params: Record<string, string> = { site: SITE, sort, page: "1", limit: "24" };
   if (status) params.status = status;
@@ -46,10 +64,11 @@ export default async function BrowsePage({
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const { novels, total } = await getNovels(searchParams);
+  const q = typeof searchParams.q === "string" ? searchParams.q.trim() : "";
 
   return (
     <Suspense fallback={<div className={styles.page} style={{ padding: "2rem" }}>Loading…</div>}>
-      <BrowseFilters initialNovels={novels} initialTotal={total} />
+      <BrowseFilters initialNovels={novels} initialTotal={total} initialQuery={q} />
     </Suspense>
   );
 }
