@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import NovelCard from "@/components/novel/NovelCard";
-import { novelsApi } from "@/lib/api";
+import { novelsApi, searchApi } from "@/lib/api";
 import type { Novel } from "@/types/api";
 import styles from "./page.module.css";
 
@@ -27,9 +27,12 @@ interface Props {
   // They reflect whatever query params were present on first load.
   initialNovels: Novel[];
   initialTotal: number;
+  /** Search term from ?q=..., e.g. from the navbar search box. */
+  initialQuery?: string;
 }
 
-export default function BrowseFilters({ initialNovels, initialTotal }: Props) {
+export default function BrowseFilters({ initialNovels, initialTotal, initialQuery = "" }: Props) {
+  const router = useRouter();
   const searchParams = useSearchParams();
 
   const [novels, setNovels] = useState<Novel[]>(initialNovels);
@@ -42,10 +45,13 @@ export default function BrowseFilters({ initialNovels, initialTotal }: Props) {
   const isFirstRun = useRef(true);
 
   const [page,   setPage]   = useState(1);
+  const [query,  setQuery]  = useState(initialQuery || searchParams.get("q") || "");
   const [sort,   setSort]   = useState(searchParams.get("sort")   || "views");
   const [status, setStatus] = useState(searchParams.get("status") || "");
   const [genre,  setGenre]  = useState(searchParams.get("genre")  || "");
   const [view,   setView]   = useState<"grid" | "list">("grid");
+
+  const isSearching = query.trim().length > 0;
 
   // Mobile filter drawer
   const [filterOpen, setFilterOpen] = useState(false);
@@ -55,6 +61,16 @@ export default function BrowseFilters({ initialNovels, initialTotal }: Props) {
   const loadNovels = useCallback(async () => {
     setLoading(true);
     try {
+      if (isSearching) {
+        // Search takes over completely — status/genre/sort filters don't
+        // apply to the /search endpoint, so they're intentionally not sent.
+        const data = await searchApi.query(query.trim(), page) as any;
+        const results: Novel[] = data.novels ?? data.results ?? [];
+        setNovels(results);
+        setTotal(data.total ?? results.length);
+        return;
+      }
+
       const params: Record<string, string> = {
         sort,
         page:  String(page),
@@ -71,7 +87,7 @@ export default function BrowseFilters({ initialNovels, initialTotal }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [sort, status, genre, page]);
+  }, [isSearching, query, sort, status, genre, page]);
 
   useEffect(() => {
     // First render already has server-fetched data matching the initial
@@ -84,7 +100,13 @@ export default function BrowseFilters({ initialNovels, initialTotal }: Props) {
     loadNovels();
   }, [loadNovels]);
 
-  useEffect(() => { setPage(1); }, [sort, status, genre]);
+  useEffect(() => { setPage(1); }, [sort, status, genre, query]);
+
+  const clearSearch = () => {
+    setQuery("");
+    setPage(1);
+    router.push("/browse");
+  };
 
   // Lock body scroll when mobile drawer is open
   useEffect(() => {
@@ -151,51 +173,65 @@ export default function BrowseFilters({ initialNovels, initialTotal }: Props) {
   return (
     <div className={styles.page}>
       <div className="container">
-        <h1 className={styles.heading}>Browse novels</h1>
+        <h1 className={styles.heading}>
+          {isSearching ? `Search results for "${query.trim()}"` : "Browse novels"}
+        </h1>
 
         <div className={`ad-slot ${styles.adTop}`}>— advertisement —</div>
 
         {/* ── Mobile filter bar (hidden on desktop via CSS) ── */}
-        <div className={styles.mobileBar}>
-          <button
-            className={styles.filterToggle}
-            style={activeCount > 0 ? {
-              borderColor: "var(--pink)",
-              color: "var(--pink)",
-              background: "var(--pink-light)"
-            } : {}}
-            onClick={() => setFilterOpen(true)}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-              <line x1="4"  y1="6"  x2="20" y2="6"/>
-              <line x1="8"  y1="12" x2="20" y2="12"/>
-              <line x1="12" y1="18" x2="20" y2="18"/>
-            </svg>
-            Filters
-            {activeCount > 0 && (
-              <span className={styles.filterBadge}>{activeCount}</span>
-            )}
-          </button>
+        {!isSearching && (
+          <div className={styles.mobileBar}>
+            <button
+              className={styles.filterToggle}
+              style={activeCount > 0 ? {
+                borderColor: "var(--pink)",
+                color: "var(--pink)",
+                background: "var(--pink-light)"
+              } : {}}
+              onClick={() => setFilterOpen(true)}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="4"  y1="6"  x2="20" y2="6"/>
+                <line x1="8"  y1="12" x2="20" y2="12"/>
+                <line x1="12" y1="18" x2="20" y2="18"/>
+              </svg>
+              Filters
+              {activeCount > 0 && (
+                <span className={styles.filterBadge}>{activeCount}</span>
+              )}
+            </button>
 
-          <select
-            className={styles.mobileSortSelect}
-            value={sort}
-            onChange={e => setSort(e.target.value)}
-          >
-            {SORTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
-        </div>
+            <select
+              className={styles.mobileSortSelect}
+              value={sort}
+              onChange={e => setSort(e.target.value)}
+            >
+              {SORTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+            </select>
+          </div>
+        )}
 
         <div className={styles.layout}>
-          {/* ── Desktop sidebar ── */}
-          <aside className={styles.sidebar}>
-            <FilterPanel />
-          </aside>
+          {/* ── Desktop sidebar — filters don't apply to search results, so
+              it's hidden while searching rather than shown but non-functional ── */}
+          {!isSearching && (
+            <aside className={styles.sidebar}>
+              <FilterPanel />
+            </aside>
+          )}
 
           {/* ── Results ── */}
           <div className={styles.results}>
-            {hasFilters && (
+            {isSearching ? (
+              <div className={styles.chips}>
+                <span className={styles.chip}>
+                  &ldquo;{query.trim()}&rdquo;
+                  <button onClick={clearSearch}>✕</button>
+                </span>
+              </div>
+            ) : hasFilters && (
               <div className={styles.chips}>
                 {status && (
                   <span className={styles.chip}>
@@ -215,14 +251,16 @@ export default function BrowseFilters({ initialNovels, initialTotal }: Props) {
             <div className={styles.resultsBar}>
               <span className={styles.count}><strong>{total}</strong> novels</span>
               <div className={styles.barRight}>
-                {/* Sort select — hidden on mobile (mobile has its own above) */}
-                <select
-                  className={styles.desktopSortSelect}
-                  value={sort}
-                  onChange={e => setSort(e.target.value)}
-                >
-                  {SORTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-                </select>
+                {/* Sort select — hidden while searching (unsupported) and on mobile (mobile has its own above) */}
+                {!isSearching && (
+                  <select
+                    className={styles.desktopSortSelect}
+                    value={sort}
+                    onChange={e => setSort(e.target.value)}
+                  >
+                    {SORTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                  </select>
+                )}
                 <div className={styles.viewToggle}>
                   <button
                     className={`${styles.viewBtn} ${view === "grid" ? styles.viewActive : ""}`}
@@ -245,7 +283,11 @@ export default function BrowseFilters({ initialNovels, initialTotal }: Props) {
                 ))}
               </div>
             ) : novels.length === 0 ? (
-              <p className={styles.empty}>No novels found. Try clearing some filters.</p>
+              <p className={styles.empty}>
+                {isSearching
+                  ? <>No novels found for &ldquo;{query.trim()}&rdquo;. <button className={styles.clearAll} onClick={clearSearch}>✕ Clear search</button></>
+                  : "No novels found. Try clearing some filters."}
+              </p>
             ) : view === "grid" ? (
               <div className={styles.grid}>
                 {novels.map(n => <NovelCard key={n._id} novel={n} />)}
