@@ -23,6 +23,9 @@ export const metadata: Metadata = {
     description: SITE_DESC,
     url: SITE_URL,
   },
+  other: {
+    "google-adsense-account": "ca-pub-9481193991721439",
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
