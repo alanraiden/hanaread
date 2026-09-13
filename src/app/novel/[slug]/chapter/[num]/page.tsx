@@ -7,6 +7,7 @@ import Comments from './Comments';
 import NovelCard from '@/components/novel/NovelCard';
 import suggestedStyles from './suggested.module.css';
 import ProgressTracker from '@/components/reading/ProgressTracker';
+import SwRegister from '@/components/chapter/SwRegister';
 
 const API  = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 const SITE = process.env.NEXT_PUBLIC_SITE_ID || "site1";
@@ -252,6 +253,8 @@ export default async function ChapterPage({
 
   return (
     <div className={styles.page}>
+      {/* Push-ad service worker — chapter pages only */}
+      <SwRegister />
       {/* Invisible — records this chapter as the reader's latest progress */}
       {novel && (
         <ProgressTracker

@@ -38,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
+
       </head>
       <body>
         <AuthProvider>
