@@ -28,10 +28,10 @@ const nextConfig = {
             value: [
               "default-src 'self'",
               "img-src * data: blob:",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://3nbf4.com https://pagead2.googlesyndication.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://3nbf4.com https://nap5k.com https://n6wxm.com https://pagead2.googlesyndication.com",
               "style-src 'self' 'unsafe-inline'",
               "font-src 'self' data:",
-              "connect-src 'self' https://3nbf4.com *",
+              "connect-src 'self' https://3nbf4.com https://nap5k.com https://n6wxm.com *",
               "frame-ancestors 'self'",
             ].join("; "),
           },
