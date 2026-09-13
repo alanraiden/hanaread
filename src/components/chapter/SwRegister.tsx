@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 /**
  * Registers the push-ad service worker (sw.js) for monetization.
- * Only mounted on chapter pages — never on the homepage or novel-detail pages.
+ * Only mounted on chapter pages -- never on the homepage or novel-detail pages.
  */
 export default function SwRegister() {
   useEffect(() => {
