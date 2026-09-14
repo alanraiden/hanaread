@@ -9,6 +9,25 @@ import suggestedStyles from './suggested.module.css';
 import ProgressTracker from '@/components/reading/ProgressTracker';
 import SwRegister from '@/components/chapter/SwRegister';
 
+// Monetag ad scripts — chapter page only
+const MonotagAds = () => (
+  <>
+    {/* Monetag — vignette ad (zone 11793788) */}
+    <script
+      dangerouslySetInnerHTML={{
+        __html: `(function(s){s.dataset.zone='11793788',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement,document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`,
+      }}
+    />
+    {/* Monetag — tag/push (zone 11793782) */}
+    <script
+      dangerouslySetInnerHTML={{
+        __html: `(function(s){s.dataset.zone='11793782',s.src='https://nap5k.com/tag.min.js'})([document.documentElement,document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`,
+      }}
+    />
+  </>
+);
+
+
 const API  = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
 const SITE = process.env.NEXT_PUBLIC_SITE_ID || "site1";
 
@@ -253,8 +272,11 @@ export default async function ChapterPage({
 
   return (
     <div className={styles.page}>
+      {/* Monetag ads — chapter pages only */}
+      <MonotagAds />
       {/* Push-ad service worker — chapter pages only */}
       <SwRegister />
+
       {/* Invisible — records this chapter as the reader's latest progress */}
       {novel && (
         <ProgressTracker
