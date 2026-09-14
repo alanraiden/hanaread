@@ -38,9 +38,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           crossOrigin="anonymous"
           strategy="afterInteractive"
         />
+<<<<<<< HEAD
 
       </head>
       <body>
+=======
+      </head>
+      <body>
+        {/* Monetag vignette — inline so crawlers can detect it in raw HTML */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(s){s.dataset.zone='11793788',s.src='https://n6wxm.com/vignette.min.js'})([document.documentElement,document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`,
+          }}
+        />
+>>>>>>> 870de97 (Initial commit)
         <AuthProvider>
           <Navbar />
           <main>{children}</main>
